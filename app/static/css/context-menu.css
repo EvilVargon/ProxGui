@@ -43,6 +43,34 @@
     background-color: #ffeaea;
 }
 
+/* Folder Tree View in Modal */
+.folder-tree-container {
+    background-color: #fff;
+    border-color: #dee2e6;
+}
+
+.folder-tree-item {
+    margin: 2px 0;
+}
+
+.folder-tree-item .form-check-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+.folder-tree-children {
+    border-left: 1px dashed #dee2e6;
+    margin-left: 8px;
+}
+
+.folder-tree-toggle {
+    font-size: 0.8rem;
+    color: #6c757d;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* Dark mode styles */
 body.dark-mode .context-menu {
     background-color: var(--dark-card-bg);
@@ -69,4 +97,28 @@ body.dark-mode .item-danger {
 
 body.dark-mode .item-danger:hover {
     background-color: rgba(255, 0, 0, 0.1);
+}
+
+/* Dark mode for folder tree view */
+body.dark-mode .folder-tree-container {
+    background-color: var(--dark-card-bg);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
+}
+
+body.dark-mode .folder-tree-children {
+    border-left-color: var(--dark-sidebar-border);
+}
+
+body.dark-mode .form-check-label {
+    color: var(--dark-text);
+}
+
+body.dark-mode .form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+body.dark-mode .folder-tree-toggle {
+    color: var(--dark-text-muted);
 }

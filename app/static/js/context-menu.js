@@ -141,11 +141,16 @@ document.addEventListener('DOMContentLoaded', function() {
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <div class="form-group">
-                                <label for="destinationFolder">Select folder:</label>
-                                <select class="form-select" id="destinationFolder">
-                                    <!-- Folders will be loaded here -->
-                                </select>
+                            <div class="form-group mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label mb-0">Select destination folder:</label>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="expandAllFolders">Expand All</button>
+                                </div>
+                                <div class="folder-tree-container border rounded p-2" style="max-height: 300px; overflow-y: auto;">
+                                    <div id="folderTreeView">
+                                        <!-- Folder tree will be loaded here -->
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -159,36 +164,154 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.appendChild(folderModal);
         }
         
-        // Load folders into the select
-        const select = document.getElementById('destinationFolder');
-        select.innerHTML = '';
+        // Build folder tree view
+        const treeContainer = document.getElementById('folderTreeView');
+        treeContainer.innerHTML = '';
         
-        // Get all folders from the DOM
+        // Add root option
+        const rootItem = document.createElement('div');
+        rootItem.className = 'folder-tree-item';
+        rootItem.innerHTML = `
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="folderSelection" id="folder-root" value="root" checked>
+                <label class="form-check-label" for="folder-root">
+                    <i class="fas fa-folder me-1 text-warning"></i> Root
+                </label>
+            </div>
+        `;
+        treeContainer.appendChild(rootItem);
+        
+        // Create a flat list of all folders
+        const allFolders = [];
         document.querySelectorAll('.folder-item').forEach(folder => {
             const folderId = folder.getAttribute('data-folder-id');
+            const folderName = folder.querySelector('.folder-name').textContent.trim();
             
             // Skip the current folder and its children if we're moving a folder
-            if (itemType === 'folder' && (folderId === itemId || isChildFolder(folderId, itemId))) {
+            if (itemType === 'folder' && folderId === itemId) {
                 return;
             }
             
-            const folderName = folder.querySelector('.folder-name').textContent.trim();
-            const option = document.createElement('option');
-            option.value = folderId;
-            option.text = folderName;
-            select.appendChild(option);
+            // Find parent id
+            let parentId = 'root';
+            const folderContent = folder.closest('.folder-content');
+            if (folderContent) {
+                parentId = folderContent.getAttribute('data-parent') || 'root';
+            }
+            
+            allFolders.push({
+                id: folderId,
+                name: folderName,
+                parentId: parentId
+            });
+        });
+        
+        // Log all folders for debugging
+        console.log('All folders:', allFolders);
+        
+        // Build folder tree
+        buildFolderTreeFromList(treeContainer, allFolders, 'root', 0);
+        
+        // Set up expand all button
+        document.getElementById('expandAllFolders').onclick = function() {
+            document.querySelectorAll('.folder-tree-children').forEach(child => {
+                child.style.display = 'block';
+                
+                // Update toggle icons
+                const toggleIcon = child.previousElementSibling.querySelector('.folder-tree-toggle i');
+                if (toggleIcon) {
+                    toggleIcon.className = 'fas fa-caret-down';
+                }
+            });
+        };
+        
+        // Set up folder toggle clicks
+        document.querySelectorAll('.folder-tree-toggle').forEach(toggle => {
+            toggle.onclick = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const children = this.closest('.folder-tree-item').nextElementSibling;
+                if (children && children.classList.contains('folder-tree-children')) {
+                    if (children.style.display === 'none') {
+                        children.style.display = 'block';
+                        this.querySelector('i').className = 'fas fa-caret-down';
+                    } else {
+                        children.style.display = 'none';
+                        this.querySelector('i').className = 'fas fa-caret-right';
+                    }
+                }
+            };
         });
         
         // Set up the confirm button
         document.getElementById('confirmFolderMove').onclick = function() {
-            const selectedFolderId = document.getElementById('destinationFolder').value;
-            moveItemToFolder(itemId, itemType, selectedFolderId);
-            bootstrap.Modal.getInstance(folderModal).hide();
+            const selectedFolder = document.querySelector('input[name="folderSelection"]:checked');
+            if (selectedFolder) {
+                const selectedFolderId = selectedFolder.value;
+                moveItemToFolder(itemId, itemType, selectedFolderId);
+                bootstrap.Modal.getInstance(folderModal).hide();
+            } else {
+                alert('Please select a destination folder');
+            }
         };
         
         // Show the modal
         const modal = new bootstrap.Modal(folderModal);
         modal.show();
+    }
+    
+    // Build folder tree from a flat list of folders
+    function buildFolderTreeFromList(container, folders, parentId, level) {
+        // Find children of this parent
+        const children = folders.filter(folder => folder.parentId === parentId);
+        
+        if (children.length === 0) return;
+        
+        // Create container for children if this isn't root
+        let childrenContainer = container;
+        
+        if (parentId !== 'root') {
+            childrenContainer = document.createElement('div');
+            childrenContainer.className = 'folder-tree-children';
+            childrenContainer.style.paddingLeft = '20px';
+            
+            // Default collapsed for levels > 1
+            if (level > 1) {
+                childrenContainer.style.display = 'none';
+            }
+            
+            container.appendChild(childrenContainer);
+        }
+        
+        // Add each folder
+        children.forEach(folder => {
+            // Create folder item
+            const folderItem = document.createElement('div');
+            folderItem.className = 'folder-tree-item';
+            
+            // Check if this folder has children
+            const hasChildren = folders.some(f => f.parentId === folder.id);
+            
+            folderItem.innerHTML = `
+                <div class="d-flex align-items-center py-1">
+                    ${hasChildren ? `<span class="folder-tree-toggle me-1" style="width: 15px; cursor: pointer;"><i class="fas fa-caret-${level > 1 ? 'right' : 'down'}"></i></span>` : '<span style="width: 15px;"></span>'}
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="radio" name="folderSelection" id="folder-${folder.id}" value="${folder.id}">
+                        <label class="form-check-label" for="folder-${folder.id}">
+                            <i class="fas fa-folder me-1 text-warning"></i> ${folder.name}
+                        </label>
+                    </div>
+                </div>
+            `;
+            
+            childrenContainer.appendChild(folderItem);
+            
+            // Recursively build children
+            if (hasChildren) {
+                buildFolderTreeFromList(folderItem, folders, folder.id, level + 1);
+            }
+        });
     }
     
     // Check if a folder is a child of another folder
