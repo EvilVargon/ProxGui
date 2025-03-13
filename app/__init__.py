@@ -57,4 +57,31 @@ def create_app(config_class=Config):
             return value.strftime(format)
         return value
 
+    # Add a safe number conversion filter
+    @app.template_filter('safe_number')
+    def safe_number(value, default=0.0):
+        """Safely convert any value to a number, returning default if conversion fails"""
+        if value is None:
+            return default
+        try:
+            return float(value)
+        except (ValueError, TypeError):
+            return default
+
+    # Add a safe percent calculation filter
+    @app.template_filter('safe_percent')
+    def safe_percent(value, total, default=0.0, decimals=1):
+        """Safely calculate percentage, handling edge cases"""
+        if value is None or total is None:
+            return default
+        try:
+            value = float(value)
+            total = float(total)
+            if total <= 0:
+                return default
+            return round((value / total) * 100, decimals)
+        except (ValueError, TypeError):
+            return default
+
+
     return app

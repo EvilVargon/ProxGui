@@ -155,23 +155,46 @@
         <div class="resource-badge">
             CPU
             <div class="mini-progress">
-                <div class="mini-progress-fill cpu-fill" style="width: {{ vm_status.cpu * 100 }}%;"></div>
+                {% if vm_status.cpu is defined and vm_status.cpu is not string %}
+                    <div class="mini-progress-fill cpu-fill" style="width: {{ vm_status.cpu * 100 }}%;"></div>
+                    {% set cpu_percent = (vm_status.cpu * 100)|float|round(1) %}
+                {% else %}
+                    <div class="mini-progress-fill cpu-fill" style="width: 0%;"></div>
+                    {% set cpu_percent = 0.0 %}
+                {% endif %}
             </div>
-            {{ (vm_status.cpu * 100)|round(1) }}%
+            {{ cpu_percent }}%
         </div>
         <div class="resource-badge">
             RAM
             <div class="mini-progress">
-                {% set mem_percent = (vm_status.mem / vm_status.maxmem * 100)|round(1) %}
-                <div class="mini-progress-fill memory-fill" style="width: {{ mem_percent }}%;"></div>
+                {% if vm_status.mem is defined and vm_status.mem is not string and 
+                       vm_status.maxmem is defined and vm_status.maxmem is not string and 
+                       vm_status.maxmem > 0 %}
+                    {% set mem_percent = ((vm_status.mem / vm_status.maxmem * 100)|float|round(1)) %}
+                    <div class="mini-progress-fill memory-fill" style="width: {{ mem_percent }}%;"></div>
+                {% else %}
+                    <div class="mini-progress-fill memory-fill" style="width: 0%;"></div>
+                    {% set mem_percent = 0.0 %}
+                {% endif %}
             </div>
             {{ mem_percent }}%
         </div>
         <div class="resource-badge">
-            <i class="fas fa-microchip"></i> {{ vm_status.cpus }} vCPU
+            <i class="fas fa-microchip"></i> 
+            {% if vm_status.cpus is defined and vm_status.cpus is not string %}
+                {{ vm_status.cpus }}
+            {% else %}
+                0
+            {% endif %} vCPU
         </div>
         <div class="resource-badge">
-            <i class="fas fa-memory"></i> {{ (vm_status.maxmem / 1024 / 1024 / 1024)|round(1) }} GB
+            <i class="fas fa-memory"></i> 
+            {% if vm_status.maxmem is defined and vm_status.maxmem is not string %}
+                {{ (vm_status.maxmem / 1024 / 1024 / 1024)|float|round(1) }}
+            {% else %}
+                0
+            {% endif %} GB
         </div>
     </div>
     <div class="action-buttons">
