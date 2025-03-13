@@ -54,6 +54,7 @@ footer {
     margin-bottom: 2px;
     cursor: pointer;
     border-radius: 4px;
+    user-select: none;
 }
 
 .folder-item:hover {
@@ -88,8 +89,8 @@ footer {
     border: 1px solid #dee2e6;
     display: flex;
     align-items: center;
-    cursor: move; /* Show move cursor */
     position: relative;
+    user-select: none;
 }
 
 .vm-item:hover {
@@ -158,34 +159,6 @@ footer {
     color: #007bff;
 }
 
-/* Drag and drop styles */
-.sortable-ghost {
-    opacity: 0.5 !important;
-}
-
-.sortable-chosen {
-    background-color: #e7f5ff !important;
-}
-
-.sortable-drag {
-    opacity: 0.8;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    transform: scale(0.95);
-    background-color: #e7f5ff !important;
-    pointer-events: none;
-}
-
-.drop-indicator {
-    height: 2px;
-    background-color: #4dabf7;
-    margin: 4px 0;
-}
-
-/* Hide links within sortable items when dragging */
-.dragging {
-    cursor: grabbing !important;
-}
-
 /* Responsive adjustments */
 @media (max-width: 767.98px) {
     .sidebar {
@@ -203,39 +176,6 @@ footer {
     .content-area {
         width: 100%;
     }
-}
-
-/* Add these specific styles for dragging support */
-
-/* Make items draggable */
-.vm-item, .folder-item {
-    user-select: none; /* Prevent text selection during drag */
-    cursor: pointer;
-}
-
-/* VM items should have a move cursor to indicate draggability */
-.vm-item {
-    cursor: grab;
-}
-
-.vm-item:active {
-    cursor: grabbing;
-}
-
-/* Sortable specific styles */
-.sortable-chosen {
-    cursor: grabbing !important;
-}
-
-.sortable-ghost {
-    opacity: 0.4 !important;
-    background-color: #e7f5ff !important;
-}
-
-.sortable-drag {
-    opacity: 0.8 !important;
-    background-color: #e7f5ff !important;
-    cursor: grabbing !important;
 }
 
 /* Make sure folder toggle area remains clickable */
@@ -258,9 +198,4 @@ footer {
 
 .vm-link:hover {
     color: #007bff;
-}
-
-/* Make the drag handle clearly defined and prominent */
-.vm-info {
-    padding-right: 20px; /* Make room for the link icon */
 }

@@ -1,0 +1,72 @@
+/* Context Menu Styles */
+.context-menu {
+    position: absolute;
+    min-width: 150px;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1100;
+    overflow: hidden;
+}
+
+.context-menu-header {
+    padding: 6px 12px;
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.context-menu-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background-color 0.15s;
+}
+
+.context-menu-item:hover {
+    background-color: #f1f3f5;
+}
+
+.context-menu-separator {
+    height: 1px;
+    background-color: #dee2e6;
+    margin: 4px 0;
+}
+
+.item-danger {
+    color: #dc3545;
+}
+
+.item-danger:hover {
+    background-color: #ffeaea;
+}
+
+/* Dark mode styles */
+body.dark-mode .context-menu {
+    background-color: var(--dark-card-bg);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
+}
+
+body.dark-mode .context-menu-header {
+    background-color: var(--dark-sidebar);
+    border-color: var(--dark-border);
+}
+
+body.dark-mode .context-menu-item:hover {
+    background-color: var(--dark-hover);
+}
+
+body.dark-mode .context-menu-separator {
+    background-color: var(--dark-border);
+}
+
+body.dark-mode .item-danger {
+    color: #ff6b6b;
+}
+
+body.dark-mode .item-danger:hover {
+    background-color: rgba(255, 0, 0, 0.1);
+}

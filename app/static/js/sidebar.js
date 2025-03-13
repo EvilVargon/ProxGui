@@ -2,9 +2,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize folder toggle functionality
     initFolderToggles();
     
-    // Initialize drag and drop for VMs and folders
-    initDragAndDrop();
-    
     // Initialize new folder button
     document.getElementById('newFolderBtn')?.addEventListener('click', function() {
         loadFolderOptions();
@@ -26,6 +23,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelector('#vm-folder-tree .loading-spinner')) {
         loadVMTree();
     }
+
+    // Initialize click handlers for VM items
+    initVMClickHandlers();
 });
 
 // Initialize folder toggles
@@ -89,73 +89,9 @@ function initFolderToggles() {
     });
 }
 
-// Initialize drag and drop functionality
-function initDragAndDrop() {
-    console.log("Initializing drag and drop");
-    
-    // First, apply Sortable to all folder contents
-    document.querySelectorAll('.folder-content').forEach(folderContent => {
-        console.log("Setting up Sortable for folder content", folderContent.getAttribute('data-parent'));
-        
-        new Sortable(folderContent, {
-            group: 'vm-folders',
-            animation: 150,
-            ghostClass: 'sortable-ghost',
-            chosenClass: 'sortable-chosen',
-            dragClass: 'sortable-drag',
-            // Only drag the specific items, not the whole container
-            draggable: '.vm-item, .folder-item',
-            onStart: function(evt) {
-                console.log("Drag started", evt.item.getAttribute('data-id'));
-            },
-            onEnd: function(evt) {
-                console.log("Drag ended", evt.item.getAttribute('data-id'));
-                
-                const itemId = evt.item.getAttribute('data-id');
-                const itemType = evt.item.classList.contains('folder-item') ? 'folder' : 'vm';
-                const newParentId = evt.to.getAttribute('data-parent');
-                
-                // Only update if it actually moved
-                if (evt.from !== evt.to || evt.oldIndex !== evt.newIndex) {
-                    console.log(`Moving ${itemType} ${itemId} to ${newParentId}`);
-                    updateItemParent(itemId, itemType, newParentId);
-                }
-            }
-        });
-    });
-    
-    // Also apply Sortable to the root container
-    const rootContainer = document.getElementById('vm-folder-tree');
-    if (rootContainer) {
-        console.log("Setting up Sortable for root container");
-        
-        new Sortable(rootContainer, {
-            group: 'vm-folders',
-            animation: 150,
-            ghostClass: 'sortable-ghost',
-            chosenClass: 'sortable-chosen',
-            dragClass: 'sortable-drag',
-            // Only drag the specific items, not the whole container
-            draggable: '.vm-item, .folder-item',
-            onStart: function(evt) {
-                console.log("Root drag started", evt.item.getAttribute('data-id'));
-            },
-            onEnd: function(evt) {
-                console.log("Root drag ended", evt.item.getAttribute('data-id'));
-                
-                const itemId = evt.item.getAttribute('data-id');
-                const itemType = evt.item.classList.contains('folder-item') ? 'folder' : 'vm';
-                
-                // Only update if it actually moved
-                if (evt.from !== evt.to || evt.oldIndex !== evt.newIndex) {
-                    console.log(`Moving ${itemType} ${itemId} to root`);
-                    updateItemParent(itemId, itemType, 'root');
-                }
-            }
-        });
-    }
-    
-    // Handle click events on VM items separately
+// Initialize click handlers for VM items
+function initVMClickHandlers() {
+    // Handle click events on VM items
     document.querySelectorAll('.vm-item').forEach(vmItem => {
         vmItem.addEventListener('click', function(e) {
             // If clicking the link icon, let the default action happen
@@ -174,34 +110,6 @@ function initDragAndDrop() {
     });
 }
 
-// Update item parent after drag and drop
-function updateItemParent(itemId, itemType, parentId) {
-    fetch('/api/move-item', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            item_id: itemId,
-            item_type: itemType,
-            parent_id: parentId
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (!data.success) {
-            console.error('Failed to update item parent:', data.error);
-            alert('Failed to move item: ' + data.error);
-        } else {
-            console.log('Successfully moved item');
-        }
-    })
-    .catch(error => {
-        console.error('Error updating item parent:', error);
-        alert('Error moving item: ' + error);
-    });
-}
-
 // Load VM tree via AJAX
 function loadVMTree() {
     fetch('/api/vm-tree')
@@ -209,8 +117,14 @@ function loadVMTree() {
         .then(data => {
             if (data.success) {
                 document.getElementById('vm-folder-tree').innerHTML = data.html;
+                // Initialize needed functionality
                 initFolderToggles();
-                initDragAndDrop();
+                initVMClickHandlers();
+                
+                // Initialize context menu if available
+                if (window.initContextMenuAfterLoad) {
+                    window.initContextMenuAfterLoad();
+                }
             } else {
                 document.getElementById('vm-folder-tree').innerHTML = 
                     `<div class="alert alert-danger">Failed to load VM tree: ${data.error}</div>`;
@@ -268,6 +182,9 @@ function createNewFolder() {
             // Close modal
             bootstrap.Modal.getInstance(document.getElementById('newFolderModal')).hide();
             
+            // Reset the form
+            document.getElementById('folderName').value = '';
+            
             // Reload VM tree
             loadVMTree();
         } else {
@@ -321,3 +238,6 @@ function searchVMs(query) {
         });
     }
 }
+
+// Make loadVMTree globally available so it can be called from context-menu.js
+window.loadVMTree = loadVMTree;
