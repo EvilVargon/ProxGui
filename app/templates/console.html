@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}VM Console - Proxmox User Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    .console-container {
+        width: 100%;
+        height: 80vh;
+        margin: 0;
+        padding: 0;
+        background-color: #1a1a1a;
+    }
+    
+    #canvas {
+        width: 100%;
+        height: 100%;
+    }
+    
+    .controls {
+        background-color: #f8f9fa;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1 class="mb-0">VM Console</h1>
+            <div>
+                <a href="{{ url_for('main.vm_details', node=node, vmid=vmid, type=vmtype) }}" class="btn btn-secondary me-2">Back to VM Details</a>
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">Dashboard</a>
+            </div>
+        </div>
+        <hr>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-12">
+        <div class="controls">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>{{ node }} / VM ID: {{ vmid }}</h5>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button id="ctrlAltDelBtn" class="btn btn-sm btn-secondary">Send Ctrl+Alt+Del</button>
+                    <button id="fullscreenBtn" class="btn btn-sm btn-primary">Fullscreen</button>
+                    <button id="connectBtn" class="btn btn-sm btn-success">Connect</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="console-container" id="console-container">
+                    <div id="noVNC_screen">
+                        <div id="noVNC_status_bar" class="noVNC_status_bar" style="margin-top: 0px;">
+                            <div id="noVNC_status">Disconnected</div>
+                        </div>
+                        <canvas id="noVNC_canvas" width="640" height="480">
+                            Canvas not supported.
+                        </canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Note: In a real implementation, you would include the noVNC client library -->
+<!-- This is just a placeholder template to show the layout -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('connectBtn').addEventListener('click', function() {
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Connecting...';
+        
+        // In a real implementation, you'd connect to the noVNC websocket here
+        // This is just a placeholder
+        document.getElementById('noVNC_status').textContent = 'Connecting...';
+        
+        setTimeout(() => {
+            // Simulating connection for demo purposes
+            document.getElementById('noVNC_status').textContent = 'Connected';
+            this.innerHTML = 'Disconnect';
+            this.className = 'btn btn-sm btn-danger';
+            this.disabled = false;
+        }, 2000);
+    });
+    
+    document.getElementById('ctrlAltDelBtn').addEventListener('click', function() {
+        // In a real implementation, you'd send Ctrl+Alt+Del to the noVNC client
+        alert('Sending Ctrl+Alt+Del');
+    });
+    
+    document.getElementById('fullscreenBtn').addEventListener('click', function() {
+        // In a real implementation, you'd toggle fullscreen mode
+        const container = document.getElementById('console-container');
+        
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        } else {
+            container.requestFullscreen();
+        }
+    });
+</script>
+{% endblock %}

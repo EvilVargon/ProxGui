@@ -1,0 +1,404 @@
+/* Dark mode colors */
+:root {
+    --dark-bg: #1e1e2e;
+    --dark-card-bg: #2a2a3c;
+    --dark-border: #383850;
+    --dark-text: #e3e3e6;
+    --dark-text-muted: #9999a8;
+    --dark-link: #89b4fa;
+    --dark-hover: #313145;
+    --dark-input-bg: #181825;
+    --dark-sidebar: #181825;
+    --dark-sidebar-border: #31314d;
+    --dark-folder-item: #2a2a3c;
+    --dark-vm-item: #313145;
+    --dark-progress-bg: #383850;
+  }
+  
+  /* Apply dark mode styles */
+  body.dark-mode {
+    background-color: var(--dark-bg);
+    color: var(--dark-text);
+  }
+  
+  /* Navigation */
+  body.dark-mode .navbar {
+    background-color: var(--dark-sidebar) !important;
+  }
+  
+  body.dark-mode .navbar-dark .navbar-nav .nav-link {
+    color: var(--dark-text);
+  }
+  
+  /* Sidebar */
+  body.dark-mode .sidebar {
+    background-color: var(--dark-sidebar);
+    border-right: 1px solid var(--dark-sidebar-border);
+  }
+  
+  body.dark-mode .sidebar-header {
+    border-bottom: 1px solid var(--dark-sidebar-border);
+  }
+  
+  body.dark-mode .sidebar-search .form-control {
+    background-color: var(--dark-input-bg);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
+  }
+  
+  body.dark-mode .folder-item {
+    color: var(--dark-text);
+  }
+  
+  body.dark-mode .folder-item:hover {
+    background-color: var(--dark-hover);
+  }
+  
+  body.dark-mode .folder-content {
+    border-left: 1px dashed var(--dark-sidebar-border);
+  }
+  
+  body.dark-mode .vm-item {
+    background-color: var(--dark-vm-item);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
+  }
+  
+  body.dark-mode .vm-item:hover {
+    background-color: var(--dark-hover);
+    border-color: var(--dark-sidebar-border);
+  }
+  
+  body.dark-mode .vm-memory-bar {
+    background-color: var(--dark-progress-bg);
+  }
+  
+  /* Cards */
+  body.dark-mode .card {
+    background-color: var(--dark-card-bg);
+    border-color: var(--dark-border);
+  }
+  
+  body.dark-mode .card-header {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-bottom: 1px solid var(--dark-border);
+  }
+  
+  body.dark-mode .card-body {
+    background-color: var(--dark-card-bg);
+  }
+  
+  body.dark-mode .card-footer {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-top: 1px solid var(--dark-border);
+  }
+  
+  /* Fix text colors */
+  body.dark-mode h1, 
+  body.dark-mode h2, 
+  body.dark-mode h3, 
+  body.dark-mode h4, 
+  body.dark-mode h5, 
+  body.dark-mode h6,
+  body.dark-mode p,
+  body.dark-mode .card-title,
+  body.dark-mode .card-header h5, 
+  body.dark-mode .text-muted,
+  body.dark-mode small,
+  body.dark-mode .small {
+    color: var(--dark-text);
+  }
+  
+  body.dark-mode .text-muted {
+    color: var(--dark-text-muted) !important;
+  }
+  
+  /* Tables */
+  body.dark-mode .table {
+    color: var(--dark-text);
+  }
+  
+  body.dark-mode .table-hover tbody tr:hover {
+    background-color: var(--dark-hover);
+  }
+  
+  body.dark-mode .table td, 
+  body.dark-mode .table th {
+    border-color: var(--dark-border);
+  }
+  
+  body.dark-mode .table-responsive {
+    background-color: var(--dark-card-bg);
+  }
+  
+  /* Ensure specific tables are dark-themed */
+  body.dark-mode .card .table {
+    color: var(--dark-text);
+    background-color: var(--dark-card-bg);
+  }
+  
+  body.dark-mode .card .table th {
+    background-color: rgba(0, 0, 0, 0.2);
+    color: var(--dark-text);
+  }
+  
+  /* Progress bars in tables */
+  body.dark-mode .table .progress {
+    background-color: var(--dark-progress-bg);
+  }
+  
+  /* Form controls */
+  body.dark-mode .form-control,
+  body.dark-mode .form-select {
+    background-color: var(--dark-input-bg);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
+  }
+  
+  body.dark-mode .input-group-text {
+    background-color: var(--dark-hover);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
+  }
+  
+  /* Buttons */
+  body.dark-mode .btn-secondary {
+    background-color: #45455a;
+    border-color: #45455a;
+  }
+  
+  body.dark-mode .btn-outline-secondary {
+    color: var(--dark-text);
+    border-color: #45455a;
+  }
+  
+  body.dark-mode .btn-outline-secondary:hover {
+    background-color: #45455a;
+    color: var(--dark-text);
+  }
+  
+  body.dark-mode .btn-link {
+    color: var(--dark-link);
+  }
+  
+  /* Alerts */
+  body.dark-mode .alert-info {
+    background-color: #2a334a;
+    border-color: #2a3b5a;
+    color: #8ab4f8;
+  }
+  
+  body.dark-mode .alert-danger {
+    background-color: #4a2a35;
+    border-color: #5a2a3a;
+    color: #f88a8a;
+  }
+  
+  /* Progress bars */
+  body.dark-mode .progress {
+    background-color: var(--dark-progress-bg);
+  }
+  
+  /* Modals */
+  body.dark-mode .modal-content {
+    background-color: var(--dark-card-bg);
+    border-color: var(--dark-border);
+  }
+  
+  body.dark-mode .modal-header,
+  body.dark-mode .modal-footer {
+    border-color: var(--dark-border);
+  }
+  
+  /* Footer */
+  body.dark-mode footer {
+    background-color: var(--dark-sidebar) !important;
+    color: var(--dark-text-muted);
+  }
+  
+  /* Chart colors */
+  body.dark-mode .chart-container canvas {
+    filter: brightness(0.8) contrast(1.2);
+  }
+  
+  /* Badge adjustments */
+  body.dark-mode .badge.bg-secondary {
+    background-color: #45455a !important;
+  }
+  
+  /* Fix badge colors */
+  body.dark-mode .badge.bg-success {
+    background-color: #2e7d32 !important;
+  }
+  
+  body.dark-mode .badge.bg-danger {
+    background-color: #c62828 !important;
+  }
+  
+  body.dark-mode .badge.bg-info {
+    background-color: #0288d1 !important;
+  }
+  
+  body.dark-mode .badge.bg-warning {
+    background-color: #f57c00 !important;
+  }
+  
+  /* Fix specific dashboard elements */
+  body.dark-mode .display-4 {
+    color: var(--dark-text);
+  }
+  
+  /* Node Status and Storage Overview Tables */
+  body.dark-mode .card .table-responsive .table {
+    background-color: transparent;
+  }
+  
+  body.dark-mode .card .table-responsive .table thead th {
+    background-color: rgba(0, 0, 0, 0.15);
+    color: var(--dark-text);
+  }
+  
+  body.dark-mode .card .table-responsive .table tbody td {
+    color: var(--dark-text);
+  }
+  
+  /* Ensure all spans have proper text color */
+  body.dark-mode span:not(.badge) {
+    color: var(--dark-text);
+  }
+  
+  /* Ensure all small text has proper text color */
+  body.dark-mode .small {
+    color: var(--dark-text-muted);
+  }
+  
+  /* Ensure all card title texts are properly colored */
+  body.dark-mode .card-title,
+  body.dark-mode h5.mb-0,
+  body.dark-mode h6 {
+    color: var(--dark-text);
+  }
+  
+  /* Fix links */
+  body.dark-mode a:not(.btn):not(.nav-link):not(.badge) {
+    color: var(--dark-link);
+  }
+  
+  body.dark-mode a:not(.btn):not(.nav-link):hover {
+    color: #a5c8ff;
+  }
+  
+  /* Sortable drag styles */
+  body.dark-mode .sortable-ghost {
+    background-color: #3b3b5a !important;
+  }
+  
+  body.dark-mode .sortable-chosen {
+    background-color: #3b3b5a !important;
+  }
+  
+  body.dark-mode .sortable-drag {
+    background-color: #3b3b5a !important;
+  }
+  
+  /* Chart.js custom colors */
+  body.dark-mode #cpuChart,
+  body.dark-mode #memoryChart {
+    filter: invert(0.85) hue-rotate(180deg);
+  }
+
+  /* Fix table row backgrounds in Storage Overview and Node Status */
+body.dark-mode .table tbody tr {
+    background-color: var(--dark-card-bg);
+  }
+  
+  /* Fix VM details information fields */
+  body.dark-mode .vm-details .table tbody tr th,
+  body.dark-mode .vm-details .table tbody tr td {
+    background-color: var(--dark-card-bg);
+    color: var(--dark-text);
+  }
+  
+  /* Fix snapshot information */
+  body.dark-mode .snapshots-table tbody tr th,
+  body.dark-mode .snapshots-table tbody tr td {
+    background-color: var(--dark-card-bg);
+    color: var(--dark-text) !important;
+  }
+  
+  /* Fix all table rows in any context */
+  body.dark-mode .table tr {
+    background-color: var(--dark-card-bg);
+  }
+  
+  /* Make sure all table cells have proper color */
+  body.dark-mode .table td, 
+  body.dark-mode .table th {
+    color: var(--dark-text);
+    background-color: var(--dark-card-bg);
+  }
+  
+  /* Override Bootstrap's table stripe styles if used */
+  body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.15);
+  }
+  
+  body.dark-mode .table-striped tbody tr:nth-of-type(even) {
+    background-color: var(--dark-card-bg);
+  }
+  
+  /* Fix any definition lists that might be used for VM info */
+  body.dark-mode dl, 
+  body.dark-mode dt, 
+  body.dark-mode dd {
+    color: var(--dark-text);
+  }
+  
+  /* Add more specific selectors for cards containing VM details */
+  body.dark-mode .card-body table {
+    background-color: var(--dark-card-bg);
+  }
+  
+  body.dark-mode .card-body table tr,
+  body.dark-mode .card-body table td,
+  body.dark-mode .card-body table th {
+    background-color: var(--dark-card-bg);
+    color: var(--dark-text);
+    border-color: var(--dark-border);
+  }
+  
+  /* Ensure that table header cells have appropriate styling */
+  body.dark-mode thead th {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    color: var(--dark-text) !important;
+  }
+  
+  /* Additional specificity for certain card bodies */
+  body.dark-mode .card > .card-body {
+    background-color: var(--dark-card-bg);
+  }
+  
+  /* Make sure all spans inside tables have correct colors */
+  body.dark-mode .table span {
+    color: var(--dark-text);
+  }
+  
+  /* Fix for list groups that might be used */
+  body.dark-mode .list-group-item {
+    background-color: var(--dark-card-bg);
+    color: var(--dark-text);
+    border-color: var(--dark-border);
+  }
+  
+  /* Heavy-handed approach to make sure all table content is visible */
+  body.dark-mode table,
+  body.dark-mode table tr,
+  body.dark-mode table td,
+  body.dark-mode table th,
+  body.dark-mode table tbody,
+  body.dark-mode table thead,
+  body.dark-mode table tfoot {
+    background-color: var(--dark-card-bg) !important;
+    color: var(--dark-text) !important;
+    border-color: var(--dark-border) !important;
+  }

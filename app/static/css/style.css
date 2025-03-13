@@ -1,0 +1,266 @@
+/* Custom styles for Proxmox User Portal */
+
+body {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+}
+
+footer {
+    margin-top: auto;
+}
+
+.card {
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: #f8f9fa;
+}
+
+.btn-group {
+    width: 100%;
+}
+
+/* Sidebar Styles */
+.sidebar {
+    background-color: #f8f9fa;
+    border-right: 1px solid #dee2e6;
+    height: calc(100vh - 56px);
+    position: sticky;
+    top: 56px;
+    overflow-y: auto;
+    z-index: 100;
+}
+
+.sidebar-header {
+    border-bottom: 1px solid #dee2e6;
+}
+
+.sidebar-content {
+    overflow-y: auto;
+    max-height: calc(100vh - 160px);
+}
+
+/* VM Folder Tree */
+#vm-folder-tree {
+    font-size: 0.9rem;
+}
+
+.folder-item {
+    padding: 5px;
+    margin-bottom: 2px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.folder-item:hover {
+    background-color: #e9ecef;
+}
+
+.folder-item.active {
+    background-color: #e9ecef;
+}
+
+.folder-toggle {
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+.folder-name {
+    font-weight: 500;
+}
+
+.folder-content {
+    margin-left: 20px;
+    padding-left: 10px;
+    border-left: 1px dashed #dee2e6;
+}
+
+/* VM Item in sidebar */
+.vm-item {
+    padding: 8px;
+    margin-bottom: 3px;
+    border-radius: 4px;
+    background-color: white;
+    border: 1px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    cursor: move; /* Show move cursor */
+    position: relative;
+}
+
+.vm-item:hover {
+    background-color: #f1f3f5;
+    border-color: #ced4da;
+}
+
+.vm-item.active {
+    background-color: #e7f5ff;
+    border-color: #4dabf7;
+}
+
+.vm-status {
+    margin-right: 8px;
+    font-size: 12px;
+}
+
+.vm-status-on {
+    color: #40c057;
+}
+
+.vm-status-off {
+    color: #adb5bd;
+}
+
+.vm-info {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.vm-name {
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.vm-memory-bar {
+    height: 3px;
+    width: 100%;
+    background-color: #e9ecef;
+    border-radius: 2px;
+    margin-top: 4px;
+    overflow: hidden;
+}
+
+.vm-memory-fill {
+    height: 100%;
+    background-color: #4dabf7;
+    width: 0%; /* Will be set dynamically */
+}
+
+/* Link to VM details */
+.vm-link {
+    margin-left: 8px;
+    padding: 4px;
+    font-size: 12px;
+    color: #6c757d;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.vm-link:hover {
+    color: #007bff;
+}
+
+/* Drag and drop styles */
+.sortable-ghost {
+    opacity: 0.5 !important;
+}
+
+.sortable-chosen {
+    background-color: #e7f5ff !important;
+}
+
+.sortable-drag {
+    opacity: 0.8;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transform: scale(0.95);
+    background-color: #e7f5ff !important;
+    pointer-events: none;
+}
+
+.drop-indicator {
+    height: 2px;
+    background-color: #4dabf7;
+    margin: 4px 0;
+}
+
+/* Hide links within sortable items when dragging */
+.dragging {
+    cursor: grabbing !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .sidebar {
+        position: fixed;
+        left: -100%;
+        width: 80%;
+        z-index: 1030;
+        transition: left 0.3s ease;
+    }
+    
+    .sidebar.show {
+        left: 0;
+    }
+    
+    .content-area {
+        width: 100%;
+    }
+}
+
+/* Add these specific styles for dragging support */
+
+/* Make items draggable */
+.vm-item, .folder-item {
+    user-select: none; /* Prevent text selection during drag */
+    cursor: pointer;
+}
+
+/* VM items should have a move cursor to indicate draggability */
+.vm-item {
+    cursor: grab;
+}
+
+.vm-item:active {
+    cursor: grabbing;
+}
+
+/* Sortable specific styles */
+.sortable-chosen {
+    cursor: grabbing !important;
+}
+
+.sortable-ghost {
+    opacity: 0.4 !important;
+    background-color: #e7f5ff !important;
+}
+
+.sortable-drag {
+    opacity: 0.8 !important;
+    background-color: #e7f5ff !important;
+    cursor: grabbing !important;
+}
+
+/* Make sure folder toggle area remains clickable */
+.folder-toggle {
+    z-index: 2;
+    position: relative;
+}
+
+/* VM link style */
+.vm-link {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 12px;
+    color: #6c757d;
+    z-index: 2;
+    padding: 4px;
+}
+
+.vm-link:hover {
+    color: #007bff;
+}
+
+/* Make the drag handle clearly defined and prominent */
+.vm-info {
+    padding-right: 20px; /* Make room for the link icon */
+}

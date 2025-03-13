@@ -1,0 +1,492 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Proxmox User Portal{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Cluster Overview</h1>
+
+{% if api_error is defined and api_error %}
+<div class="alert alert-danger">
+    <strong>Connection Error:</strong> Unable to connect to the Proxmox API. Please check your connection settings and try again.
+</div>
+{% else %}
+
+<!-- Cluster Status Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card h-100 border-primary">
+            <div class="card-body text-center">
+                <h2 class="display-4 mb-0" id="total-vms">{{ vms|length }}</h2>
+                <p class="text-muted">Total VMs</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 border-success">
+            <div class="card-body text-center">
+                <h2 class="display-4 mb-0" id="running-vms">
+                    {{ vms|selectattr('status', 'equalto', 'running')|list|length }}
+                </h2>
+                <p class="text-muted">Running VMs</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 border-info">
+            <div class="card-body text-center">
+                <h2 class="display-4 mb-0" id="total-nodes">
+                    {% if cluster_info and cluster_info.status %}
+                        {{ cluster_info.status|length }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </h2>
+                <p class="text-muted">Cluster Nodes</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card h-100 border-warning">
+            <div class="card-body text-center">
+                <h2 class="display-4 mb-0" id="online-nodes">
+                    {% if cluster_info and cluster_info.status %}
+                        {{ cluster_info.status|selectattr('online', 'equalto', 1)|list|length }}
+                    {% else %}
+                        0
+                    {% endif %}
+                </h2>
+                <p class="text-muted">Online Nodes</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cluster Resource Usage -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Cluster Resource Usage</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h6>CPU Usage</h6>
+                        <div class="progress mb-2" style="height: 25px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ cluster_cpu_percent }}%;" 
+                                 aria-valuenow="{{ cluster_cpu_percent }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ cluster_cpu_percent }}%
+                            </div>
+                        </div>
+                        <p class="small text-muted text-end">{{ cluster_cpu_used }} / {{ cluster_cpu_total }} cores</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Memory Usage</h6>
+                        <div class="progress mb-2" style="height: 25px;">
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ cluster_mem_percent }}%;" 
+                                 aria-valuenow="{{ cluster_mem_percent }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ cluster_mem_percent }}%
+                            </div>
+                        </div>
+                        <p class="small text-muted text-end">{{ cluster_mem_used }} / {{ cluster_mem_total }} GB</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Storage Usage</h6>
+                        <div class="progress mb-2" style="height: 25px;">
+                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ cluster_storage_percent }}%;" 
+                                 aria-valuenow="{{ cluster_storage_percent }}" aria-valuemin="0" aria-valuemax="100">
+                                {{ cluster_storage_percent }}%
+                            </div>
+                        </div>
+                        <p class="small text-muted text-end">{{ cluster_storage_used }} / {{ cluster_storage_total }} GB</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Graphs -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">CPU Load History</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="cpuChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">Memory Usage History</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="memoryChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Node Status Table -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Node Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Node</th>
+                                <th>Status</th>
+                                <th>CPU Usage</th>
+                                <th>Memory Usage</th>
+                                <th>Uptime</th>
+                                <th>VMs</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if cluster_info and cluster_info.status %}
+                                {% for node in node_status %}
+                                <tr>
+                                    <td>{{ node.name }}</td>
+                                    <td>
+                                        <span class="badge {% if node.online %}bg-success{% else %}bg-danger{% endif %}">
+                                            {% if node.online %}Online{% else %}Offline{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 5px;">
+                                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{ node.cpu_percent }}%;" 
+                                                aria-valuenow="{{ node.cpu_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <span class="small">{{ node.cpu_percent }}%</span>
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 5px;">
+                                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ node.mem_percent }}%;" 
+                                                aria-valuenow="{{ node.mem_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <span class="small">{{ node.mem_percent }}% ({{ node.mem_used }} / {{ node.mem_total }} GB)</span>
+                                    </td>
+                                    <td>{{ node.uptime_formatted }}</td>
+                                    <td>{{ node.vm_count }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No node data available</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Storage Overview -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Storage Overview</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Storage</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Usage</th>
+                                <th>Available</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if storage_status %}
+                                {% for storage in storage_status %}
+                                <tr>
+                                    <td>{{ storage.storage }}</td>
+                                    <td>{{ storage.type }}</td>
+                                    <td>
+                                        <span class="badge {% if storage.active %}bg-success{% else %}bg-danger{% endif %}">
+                                            {% if storage.active %}Active{% else %}Inactive{% endif %}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="progress" style="height: 5px;">
+                                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ storage.usage_percent }}%;" 
+                                                aria-valuenow="{{ storage.usage_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                        </div>
+                                        <span class="small">{{ storage.usage_percent }}%</span>
+                                    </td>
+                                    <td>{{ storage.avail }} GB</td>
+                                    <td>{{ storage.total }} GB</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center">No storage data available</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endif %}
+
+<!-- Create VM Modal (Placeholder) - We'll keep this for VM creation functionality -->
+<div class="modal fade" id="createVmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Virtual Machine</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createVmForm">
+                    <div class="mb-3">
+                        <label for="vmName" class="form-label">VM Name</label>
+                        <input type="text" class="form-control" id="vmName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="vmTemplate" class="form-label">Template</label>
+                        <select class="form-select" id="vmTemplate">
+                            <option value="ubuntu">Ubuntu 22.04</option>
+                            <option value="debian">Debian 11</option>
+                            <option value="centos">CentOS 9 Stream</option>
+                            <option value="windows">Windows Server 2022</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="vmCpu" class="form-label">CPU Cores</label>
+                            <select class="form-select" id="vmCpu">
+                                <option value="1">1 Core</option>
+                                <option value="2" selected>2 Cores</option>
+                                <option value="4">4 Cores</option>
+                                <option value="8">8 Cores</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="vmMemory" class="form-label">Memory</label>
+                            <select class="form-select" id="vmMemory">
+                                <option value="1">1 GB</option>
+                                <option value="2" selected>2 GB</option>
+                                <option value="4">4 GB</option>
+                                <option value="8">8 GB</option>
+                                <option value="16">16 GB</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="vmStorage" class="form-label">Storage</label>
+                            <select class="form-select" id="vmStorage">
+                                <option value="20">20 GB</option>
+                                <option value="50" selected>50 GB</option>
+                                <option value="100">100 GB</option>
+                                <option value="200">200 GB</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="vmNode" class="form-label">Node</label>
+                        <select class="form-select" id="vmNode">
+                            {% if cluster_info and cluster_info.status %}
+                                {% for node in cluster_info.status %}
+                                    {% if node.online == 1 %}
+                                    <option value="{{ node.name }}">{{ node.name }}</option>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                            <option value="">No nodes available</option>
+                            {% endif %}
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="createVmBtn">Create VM</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+<script>
+// Get chart data from the server-provided variables
+const cpuHistoryData = JSON.parse('{{ cpu_history|default([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])|tojson|safe }}');
+const memHistoryData = JSON.parse('{{ memory_history|default([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])|tojson|safe }}');
+
+// CPU Chart
+const cpuCtx = document.getElementById('cpuChart').getContext('2d');
+window.cpuChart = new Chart(cpuCtx, {
+    type: 'line',
+    data: {
+        labels: ['', '', '', '', '', '', '', '', '', '', '', ''],
+        datasets: [{
+            label: 'CPU Load (%)',
+            data: cpuHistoryData,
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 2,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                    callback: function(value) {
+                        return value + '%';
+                    },
+                    color: function() {
+                        return document.body.classList.contains('dark-mode') ? '#9999a8' : undefined;
+                    }
+                },
+                grid: {
+                    color: function() {
+                        return document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : undefined;
+                    }
+                }
+            },
+            x: {
+                ticks: {
+                    color: function() {
+                        return document.body.classList.contains('dark-mode') ? '#9999a8' : undefined;
+                    }
+                },
+                grid: {
+                    color: function() {
+                        return document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : undefined;
+                    }
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                backgroundColor: function() {
+                    return document.body.classList.contains('dark-mode') ? 'rgba(42, 42, 60, 0.8)' : undefined;
+                }
+            }
+        }
+    }
+});
+
+// Memory Chart
+const memCtx = document.getElementById('memoryChart').getContext('2d');
+window.memChart = new Chart(memCtx, {
+    type: 'line',
+    data: {
+        labels: ['', '', '', '', '', '', '', '', '', '', '', ''],
+        datasets: [{
+            label: 'Memory Usage (%)',
+            data: memHistoryData,
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 2,
+            tension: 0.4
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                    callback: function(value) {
+                        return value + '%';
+                    },
+                    color: function() {
+                        return document.body.classList.contains('dark-mode') ? '#9999a8' : undefined;
+                    }
+                },
+                grid: {
+                    color: function() {
+                        return document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : undefined;
+                    }
+                }
+            },
+            x: {
+                ticks: {
+                    color: function() {
+                        return document.body.classList.contains('dark-mode') ? '#9999a8' : undefined;
+                    }
+                },
+                grid: {
+                    color: function() {
+                        return document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : undefined;
+                    }
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                backgroundColor: function() {
+                    return document.body.classList.contains('dark-mode') ? 'rgba(42, 42, 60, 0.8)' : undefined;
+                }
+            }
+        }
+    }
+});
+
+// Refresh dashboard data every 30 seconds
+function refreshDashboardData() {
+    fetch('/api/cluster-stats')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update counters
+                document.getElementById('total-vms').textContent = data.vm_count;
+                document.getElementById('running-vms').textContent = data.running_vm_count;
+                document.getElementById('total-nodes').textContent = data.node_count;
+                document.getElementById('online-nodes').textContent = data.online_node_count;
+                
+                // Update charts
+                cpuChart.data.datasets[0].data = data.cpu_history;
+                memChart.data.datasets[0].data = data.memory_history;
+                cpuChart.update();
+                memChart.update();
+                
+                // Schedule next refresh
+                setTimeout(refreshDashboardData, 30000);
+            }
+        })
+        .catch(error => {
+            console.error('Error refreshing dashboard data:', error);
+            // Try again after a minute
+            setTimeout(refreshDashboardData, 60000);
+        });
+}
+
+// Start the refresh cycle
+setTimeout(refreshDashboardData, 30000);
+</script>
+{% endblock %}
