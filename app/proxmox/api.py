@@ -3,6 +3,16 @@ import json
 from flask import current_app
 import time
 
+import requests
+import json
+import time
+import threading
+from flask import current_app, g
+
+# Global connection pool
+_api_instances = {}
+_api_lock = threading.RLock()
+
 class ProxmoxAPI:
     def __init__(self, host, user, password, port=8006, verify_ssl=True):
         """
@@ -23,6 +33,13 @@ class ProxmoxAPI:
         self.token = None
         self.csrf_token = None
         self.token_timestamp = 0
+        self.session = requests.Session()
+        
+        # Configure session
+        if not verify_ssl:
+            self.session.verify = False
+        
+        # Initial login
         self.login()
     
     def login(self):
@@ -35,13 +52,17 @@ class ProxmoxAPI:
         
         try:
             print(f"Attempting to connect to {url}")
-            response = requests.post(url, data=data, verify=self.verify_ssl, timeout=10)
+            response = self.session.post(url, data=data, timeout=10)
             
             if response.status_code == 200:
                 result = response.json()['data']
                 self.token = result['ticket']
                 self.csrf_token = result['CSRFPreventionToken']
                 self.token_timestamp = time.time()
+                
+                # Add cookie to session
+                self.session.cookies.set("PVEAuthCookie", self.token, domain=self.host)
+                
                 print("Login successful!")
                 return True
             else:
@@ -58,14 +79,19 @@ class ProxmoxAPI:
         if time.time() - self.token_timestamp > 7100:  # ~2 hours
             self.login()
     
-    def get_request(self, endpoint):
-        """Make a GET request to the Proxmox API"""
+    def get_request(self, endpoint, params=None):
+        """Make a GET request to the Proxmox API
+        
+        Args:
+            endpoint: API endpoint path
+            params: Optional dictionary of query parameters
+        """
         self._check_token()
         url = f"https://{self.host}:{self.port}/api2/json/{endpoint}"
         headers = {"Cookie": f"PVEAuthCookie={self.token}"}
         
         try:
-            response = requests.get(url, headers=headers, verify=self.verify_ssl, timeout=10)
+            response = self.session.get(url, headers=headers, params=params, timeout=10)
             
             if response.status_code == 200:
                 return response.json()['data']
@@ -88,7 +114,7 @@ class ProxmoxAPI:
         }
         
         try:
-            response = requests.post(url, headers=headers, data=data, verify=self.verify_ssl, timeout=10)
+            response = self.session.post(url, headers=headers, data=data, timeout=10)
             
             if response.status_code in [200, 201]:
                 return response.json()['data']
@@ -100,18 +126,57 @@ class ProxmoxAPI:
         except Exception as e:
             print(f"Exception during POST request: {str(e)}")
             return None
+    
+    def close(self):
+        """Close the session"""
+        self.session.close()
 
-# Initialize the API connection
 def get_api():
-    """Get or create Proxmox API connection"""
+    """
+    Get or create a Proxmox API connection from the connection pool.
+    Uses Flask's application context for thread safety.
+    """
+    # First check if an instance already exists in the current request context
+    if hasattr(g, 'proxmox_api'):
+        return g.proxmox_api
+    
     config = current_app.config
-    return ProxmoxAPI(
-        host=config['PROXMOX_HOST'],
-        user=config['PROXMOX_USER'],
-        password=config['PROXMOX_PASSWORD'],
-        port=config.get('PROXMOX_PORT', 8006),
-        verify_ssl=config['PROXMOX_VERIFY_SSL']
-    )
+    
+    # Create a unique key for this connection based on config
+    conn_key = f"{config['PROXMOX_HOST']}:{config.get('PROXMOX_PORT', 8006)}-{config['PROXMOX_USER']}"
+    
+    # Thread-safe access to connection pool
+    with _api_lock:
+        if conn_key in _api_instances:
+            api = _api_instances[conn_key]
+            # Check if we need to refresh the token
+            api._check_token()
+        else:
+            # Create new connection
+            api = ProxmoxAPI(
+                host=config['PROXMOX_HOST'],
+                user=config['PROXMOX_USER'],
+                password=config['PROXMOX_PASSWORD'],
+                port=config.get('PROXMOX_PORT', 8006),
+                verify_ssl=config['PROXMOX_VERIFY_SSL']
+            )
+            _api_instances[conn_key] = api
+    
+    # Store in Flask's g object for this request
+    g.proxmox_api = api
+    return api
+
+# Add teardown function to Flask app
+def init_proxmox_api(app):
+    """Initialize the Proxmox API connection pool for a Flask app"""
+    @app.teardown_appcontext
+    def close_proxmox_api(exception=None):
+        """Close Proxmox API connection at the end of a request"""
+        api = getattr(g, 'proxmox_api', None)
+        if api is not None:
+            # Don't actually close it, just remove from g
+            # The connection stays in the pool for reuse
+            pass
 
 def get_cluster_info():
     """Get information about the cluster and its nodes"""
@@ -213,363 +278,192 @@ def get_user_vms(username, groups):
         print(f"Error getting user VMs: {str(e)}")
         return []
 
-def extract_disk_info(config, vmtype='qemu'):
+def extract_vm_disks(config):
     """
-    Extract disk information from VM/container configuration.
+    Extract disk information from VM/LXC configuration.
+    Returns a list of disks with their type and size.
     
     Args:
-        config (dict): VM configuration dictionary from Proxmox API
-        vmtype (str): Type of VM ('qemu' or 'lxc')
-        
+        config: VM/LXC configuration dictionary from Proxmox API
+    
     Returns:
-        list: List of dictionaries containing parsed disk information
+        List of dictionaries with disk information (id, type, storage, size in GB)
     """
     disks = []
     
-    # Return empty list if config is None or not a dictionary
-    if not config or not isinstance(config, dict):
-        return disks
+    # Common disk prefixes in Proxmox configurations
+    disk_prefixes = ['scsi', 'virtio', 'ide', 'sata', 'mp', 'rootfs']
     
-    try:
-        # Dictionary to store storage mappings
-        storage_mapping = {}
+    for key, value in config.items():
+        # Check if this is a disk entry
+        disk_type = None
+        for prefix in disk_prefixes:
+            if key.startswith(prefix):
+                disk_type = prefix
+                break
         
-        # First collect storage information/mappings
-        for key, value in config.items():
-            if key.startswith('volume') and isinstance(value, str):
-                try:
-                    storage_parts = value.split(':')
-                    if len(storage_parts) >= 2:
-                        storage_mapping[key] = {
-                            'storage': storage_parts[0],
-                            'path': value
-                        }
-                except Exception as e:
-                    print(f"Error parsing volume {key}: {e}")
+        if not disk_type:
+            continue
+            
+        # Initialize disk info
+        disk_info = {
+            'id': key,
+            'type': disk_type
+        }
         
-        # Different disk identifiers based on VM type
-        if vmtype == 'qemu':
-            # Disk type identifiers for QEMU VMs
-            disk_types = ['scsi', 'virtio', 'ide', 'sata', 'efidisk', 'tpmstate']
-        else:
-            # Disk type identifiers for LXC containers
-            disk_types = ['rootfs', 'mp', 'unused']
-        
-        # Process all disk entries
-        for key, value in config.items():
-            # Check if this is a disk key
-            is_disk_key = False
+        # Handle string configuration format
+        if isinstance(value, str):
+            # Parse comma-separated values
+            parts = value.split(',')
             
-            # For standard disk types like scsi0, virtio0, etc.
-            for disk_type in disk_types:
-                if key == disk_type or key.startswith(f"{disk_type}"):
-                    is_disk_key = True
-                    break
+            # Find storage information
+            storage_part = value.split(':', 1)[0] if ':' in value else None
+            if storage_part:
+                disk_info['storage'] = storage_part
             
-            # Skip if not a disk key
-            if not is_disk_key:
-                continue
-                
-            # Start building disk info with ID from key
-            disk_info = {'id': key}
-            
-            try:
-                # Handle string configuration format (common for both QEMU VMs and LXC containers)
-                if isinstance(value, str):
-                    # Special handling for mount points in LXC containers
-                    if key.startswith('mp'):
-                        try:
-                            # Typical format: local-lvm:vm-109-disk-1,mp=/dev/sdc,backup=1,size=100G
-                            parts = value.split(',')
-                            
-                            # First part contains storage info
-                            if ':' in parts[0]:
-                                storage_parts = parts[0].split(':')
-                                disk_info['storage'] = storage_parts[0]
-                                disk_info['path'] = parts[0]
-                            
-                            # Extract mount point
-                            for part in parts:
-                                if part.startswith('mp='):
-                                    disk_info['mount_point'] = part.split('=', 1)[1]
-                                    break
-                            
-                            # Process other parameters
-                            for part in parts:
-                                if '=' in part:
-                                    param_key, param_value = part.split('=', 1)
-                                    param_key = param_key.strip()
-                                    param_value = param_value.strip()
-                                    
-                                    # Size parsing
-                                    if param_key == 'size':
-                                        try:
-                                            # Handle size with suffix
-                                            if param_value.endswith('G'):
-                                                disk_info['size'] = float(param_value[:-1])
-                                            elif param_value.endswith('T'):
-                                                disk_info['size'] = float(param_value[:-1]) * 1024
-                                            elif param_value.endswith('M'):
-                                                disk_info['size'] = float(param_value[:-1]) / 1024
-                                            elif param_value.endswith('K'):
-                                                disk_info['size'] = float(param_value[:-1]) / (1024 * 1024)
-                                            else:
-                                                disk_info['size'] = float(param_value)
-                                        except (ValueError, TypeError) as e:
-                                            print(f"Could not parse size for {key}: {param_value}. Error: {e}")
-                                    
-                                    # Other parameters
-                                    elif param_key not in ['mp']:  # Skip already processed params
-                                        disk_info[param_key] = param_value
-                        except Exception as e:
-                            print(f"Error parsing mount point {key}: {e}")
+            # Find size information
+            for part in parts:
+                if part.startswith('size='):
+                    size_str = part.split('=', 1)[1].strip()
                     
-                    # Special handling for rootfs in LXC containers
-                    elif key == 'rootfs':
-                        try:
-                            # Typical format: local-lvm:vm-109-disk-0,size=64G
-                            parts = value.split(',')
-                            
-                            # First part contains storage info
-                            if ':' in parts[0]:
-                                storage_parts = parts[0].split(':')
-                                disk_info['storage'] = storage_parts[0]
-                                disk_info['path'] = parts[0]
-                            
-                            # Process parameters
-                            for part in parts:
-                                if '=' in part:
-                                    param_key, param_value = part.split('=', 1)
-                                    param_key = param_key.strip()
-                                    param_value = param_value.strip()
-                                    
-                                    # Size parsing
-                                    if param_key == 'size':
-                                        try:
-                                            # Handle size with suffix
-                                            if param_value.endswith('G'):
-                                                disk_info['size'] = float(param_value[:-1])
-                                            elif param_value.endswith('T'):
-                                                disk_info['size'] = float(param_value[:-1]) * 1024
-                                            elif param_value.endswith('M'):
-                                                disk_info['size'] = float(param_value[:-1]) / 1024
-                                            elif param_value.endswith('K'):
-                                                disk_info['size'] = float(param_value[:-1]) / (1024 * 1024)
-                                            else:
-                                                disk_info['size'] = float(param_value)
-                                        except (ValueError, TypeError) as e:
-                                            print(f"Could not parse size for {key}: {param_value}. Error: {e}")
-                                    
-                                    # Other parameters
-                                    else:
-                                        disk_info[param_key] = param_value
-                        except Exception as e:
-                            print(f"Error parsing rootfs {key}: {e}")
-                    
-                    # Standard disk parsing for QEMU VMs and other formats
-                    else:
-                        # Split by commas to get parameters
-                        parts = value.split(',')
-                        
-                        # First part may contain storage info
-                        if ':' in parts[0]:
-                            storage_parts = parts[0].split(':')
-                            if len(storage_parts) >= 2:
-                                disk_info['storage'] = storage_parts[0]
-                                disk_info['path'] = parts[0]
-                        
-                        # Process parameters
-                        for part in parts:
-                            if '=' in part:
-                                param_key, param_value = part.split('=', 1)
-                                param_key = param_key.strip()
-                                param_value = param_value.strip()
-                                
-                                # Size parsing
-                                if param_key == 'size':
-                                    try:
-                                        # Handle size with suffix
-                                        if param_value.endswith('G'):
-                                            disk_info['size'] = float(param_value[:-1])
-                                        elif param_value.endswith('T'):
-                                            disk_info['size'] = float(param_value[:-1]) * 1024
-                                        elif param_value.endswith('M'):
-                                            disk_info['size'] = float(param_value[:-1]) / 1024
-                                        elif param_value.endswith('K'):
-                                            disk_info['size'] = float(param_value[:-1]) / (1024 * 1024)
-                                        else:
-                                            disk_info['size'] = float(param_value)
-                                    except (ValueError, TypeError) as e:
-                                        print(f"Could not parse size for {key}: {param_value}. Error: {e}")
-                                
-                                # Volume reference
-                                elif param_key == 'volume':
-                                    if param_value in storage_mapping:
-                                        disk_info['storage'] = storage_mapping[param_value]['storage']
-                                        disk_info['path'] = storage_mapping[param_value]['path']
-                                
-                                # Important metadata
-                                elif param_key in ['format', 'media', 'cache', 'iothread', 'discard', 'backup']:
-                                    disk_info[param_key] = param_value
-                
-                # Handle dictionary configuration format (less common)
-                elif isinstance(value, dict):
-                    # Direct dictionary configuration
-                    if 'storage' in value:
-                        disk_info['storage'] = value['storage']
-                    
-                    if 'size' in value:
-                        try:
-                            size_value = value['size']
-                            
-                            # Handle size with suffix if it's a string
-                            if isinstance(size_value, str):
-                                size_value = size_value.strip()
-                                if size_value.endswith('G'):
-                                    disk_info['size'] = float(size_value[:-1])
-                                elif size_value.endswith('T'):
-                                    disk_info['size'] = float(size_value[:-1]) * 1024
-                                elif size_value.endswith('M'):
-                                    disk_info['size'] = float(size_value[:-1]) / 1024
-                                elif size_value.endswith('K'):
-                                    disk_info['size'] = float(size_value[:-1]) / (1024 * 1024)
-                                else:
-                                    disk_info['size'] = float(size_value)
-                            else:
-                                # If it's already a number
-                                disk_info['size'] = float(size_value)
-                        except (ValueError, TypeError) as e:
-                            print(f"Could not parse size for {key}: {value['size']}. Error: {e}")
-                    
-                    # Copy other important metadata
-                    for meta_key in ['format', 'media', 'cache', 'iothread', 'path', 'mount_point', 'backup']:
-                        if meta_key in value:
-                            disk_info[meta_key] = value[meta_key]
-                
-                # Add disk type info based on key prefix
-                for disk_type in disk_types:
-                    if key == disk_type or key.startswith(f"{disk_type}"):
-                        disk_info['type'] = disk_type
-                        break
-                
-                # Special disk type labels for better UI display
-                if key == 'rootfs':
-                    disk_info['type_label'] = 'Root Filesystem'
-                elif key.startswith('mp'):
-                    disk_info['type_label'] = 'Mount Point'
-                elif key.startswith('scsi'):
-                    disk_info['type_label'] = 'SCSI Disk'
-                elif key.startswith('virtio'):
-                    disk_info['type_label'] = 'VirtIO Disk'
-                elif key.startswith('ide'):
-                    disk_info['type_label'] = 'IDE Disk'
-                elif key.startswith('sata'):
-                    disk_info['type_label'] = 'SATA Disk'
-                elif key.startswith('efidisk'):
-                    disk_info['type_label'] = 'EFI Disk'
-                
-                # Validate size and add disk info to the list
-                if 'size' in disk_info:
+                    # Convert size to GB
                     try:
-                        # Ensure size is a float and rounded to 1 decimal
-                        disk_info['size'] = round(float(disk_info['size']), 1)
-                    except (ValueError, TypeError) as e:
-                        print(f"Error rounding size for disk {key}: {e}")
-                        disk_info['size'] = 0.0
-                
-                # Add the disk to our list if it has either storage, size, or mount point info
-                if ('storage' in disk_info or 
-                    ('size' in disk_info and disk_info['size'] > 0) or
-                    'mount_point' in disk_info):
-                    disks.append(disk_info)
-                
-            except Exception as e:
-                print(f"Error processing disk {key}: {e}")
+                        if size_str.endswith('G'):
+                            disk_info['size'] = float(size_str[:-1])
+                        elif size_str.endswith('T'):
+                            disk_info['size'] = float(size_str[:-1]) * 1024
+                        elif size_str.endswith('M'):
+                            disk_info['size'] = float(size_str[:-1]) / 1024
+                        else:
+                            disk_info['size'] = float(size_str)
+                    except (ValueError, TypeError):
+                        # If we can't parse the size, skip it
+                        pass
         
-        # Sort disks by a sensible order - rootfs first, then mount points, then other disks
-        def disk_sort_key(disk):
-            # Primary sort by disk type
-            if disk['id'] == 'rootfs':
-                type_order = 0  # Rootfs first
-            elif disk['id'].startswith('mp'):
-                type_order = 1  # Mount points second
-            else:
-                type_order = 2  # Other disks last
-            
-            # Secondary sort by disk ID to maintain consistent order
-            # Extract numeric part from IDs like mp0, scsi0, etc.
-            id_num = 0
+        # Handle dictionary configuration (common in LXC)
+        elif isinstance(value, dict):
+            if 'storage' in value:
+                disk_info['storage'] = value['storage']
+            if 'size' in value:
+                try:
+                    # Try to convert to float
+                    size_value = value['size']
+                    if isinstance(size_value, str):
+                        if size_value.endswith('G'):
+                            disk_info['size'] = float(size_value[:-1])
+                        elif size_value.endswith('T'):
+                            disk_info['size'] = float(size_value[:-1]) * 1024
+                        elif size_value.endswith('M'):
+                            disk_info['size'] = float(size_value[:-1]) / 1024
+                        else:
+                            disk_info['size'] = float(size_value)
+                    else:
+                        disk_info['size'] = float(size_value)
+                except (ValueError, TypeError):
+                    # If we can't parse the size, skip it
+                    pass
+        
+        # Only add disks that have a size and make sure it's a number
+        if 'size' in disk_info:
             try:
-                # Try to extract a number from the end of the ID
-                id_str = ''.join(filter(str.isdigit, disk['id']))
-                if id_str:
-                    id_num = int(id_str)
+                # Ensure size is a number before rounding
+                disk_info['size'] = round(float(disk_info['size']), 1)
+                disks.append(disk_info)
             except (ValueError, TypeError):
-                pass
-            
-            return (type_order, id_num)
-        
-        # Sort the disks
-        disks.sort(key=disk_sort_key)
-        
-    except Exception as e:
-        print(f"Error extracting disk information: {e}")
+                # If we can't convert to float for rounding, just skip this disk
+                print(f"Warning: Could not process size for disk {key}: {disk_info.get('size', 'unknown')}")
+                # If we still want to include this disk despite size issues, use:
+                # del disk_info['size']  # Remove problematic size
+                # disk_info['size'] = 0.0  # Or set a default
+                # disks.append(disk_info)
+        elif 'storage' in disk_info:
+            # Include disks that have storage info but no size
+            disk_info['size'] = 0.0  # Default size
+            disks.append(disk_info)
     
     return disks
 
-
-def extract_network_info(config):
+def get_vm_network_info(api, node, vmid, vmtype, networks):
     """
-    Extract network interface information from VM/container configuration.
+    Get network information for a VM, including IP addresses if available.
     
     Args:
-        config (dict): VM configuration dictionary from Proxmox API
+        api: ProxmoxAPI instance
+        node: Node name
+        vmid: VM ID
+        vmtype: VM type ('qemu' or 'lxc')
+        networks: List of basic network interfaces from VM config
         
     Returns:
-        list: List of dictionaries containing parsed network interface information
+        Updated networks list with IP address information where available
     """
-    networks = []
-    
-    # Return empty list if config is None or not a dictionary
-    if not config or not isinstance(config, dict):
+    # Only attempt to get agent info for running QEMU VMs
+    if vmtype != 'qemu' or not networks:
         return networks
     
     try:
-        # Look for network interfaces (net0, net1, etc.)
-        for key, value in config.items():
-            if not key.startswith('net') or not isinstance(value, str):
-                continue
-            
-            # Create base network info
-            net_info = {'id': key}
-            
-            # Split parameters
-            parts = value.split(',')
-            
-            # First part often contains model and MAC address
-            if '=' in parts[0]:
-                model, mac = parts[0].split('=', 1)
-                net_info['model'] = model
-                net_info['hwaddr'] = mac
-            
-            # Process remaining parameters
-            for part in parts:
-                if '=' in part:
-                    param_key, param_value = part.split('=', 1)
-                    param_key = param_key.strip()
-                    param_value = param_value.strip()
-                    
-                    # Common network parameters
-                    if param_key in ['bridge', 'tag', 'firewall', 'rate', 'mtu']:
-                        net_info[param_key] = param_value
-            
-            networks.append(net_info)
+        # First check if the agent is running/enabled
+        status_endpoint = f"nodes/{node}/qemu/{vmid}/status/current"
+        status = api.get_request(status_endpoint)
         
-        # Sort networks by ID for consistency
-        networks.sort(key=lambda x: x['id'])
+        # Only proceed if agent is configured and VM is running
+        if not status or status.get('status') != 'running' or status.get('agent') != 1:
+            return networks
+            
+        # Check agent status before trying to use it
+        agent_endpoint = f"nodes/{node}/qemu/{vmid}/agent/ping"
+        ping_result = api.post_request(agent_endpoint, {})
+        
+        if not ping_result or 'result' not in ping_result:
+            # Agent not responding
+            return networks
+            
+        # Now try to get network interfaces
+        agent_endpoint = f"nodes/{node}/qemu/{vmid}/agent/network-get-interfaces"
+        agent_data = api.get_request(agent_endpoint)
+        
+        if not agent_data or 'result' not in agent_data:
+            return networks
+            
+        network_interfaces = agent_data['result']
+        
+        # Add IP addresses to network interfaces
+        for network in networks:
+            for interface in network_interfaces:
+                # Match by MAC address if available
+                if 'hardware-address' in interface and 'hwaddr' in network:
+                    if interface['hardware-address'].lower() == network['hwaddr'].lower():
+                        ip_addresses = []
+                        
+                        if 'ip-addresses' in interface:
+                            for ip_info in interface['ip-addresses']:
+                                ip_addresses.append({
+                                    'ip': ip_info.get('ip-address', ''),
+                                    'prefix': ip_info.get('prefix', ''),
+                                    'type': ip_info.get('ip-address-type', '')
+                                })
+                        
+                        network['ip_addresses'] = ip_addresses
+                        break
+                
+                # If no MAC match, try to match by name (for older agents)
+                elif 'name' in interface and 'name' in network:
+                    if interface['name'].lower() == network['name'].lower():
+                        ip_addresses = []
+                        
+                        if 'ip-addresses' in interface:
+                            for ip_info in interface['ip-addresses']:
+                                ip_addresses.append({
+                                    'ip': ip_info.get('ip-address', ''),
+                                    'prefix': ip_info.get('prefix', ''),
+                                    'type': ip_info.get('ip-address-type', '')
+                                })
+                        
+                        network['ip_addresses'] = ip_addresses
+                        break
         
     except Exception as e:
-        print(f"Error extracting network information: {e}")
+        print(f"Error getting network information for VM {vmid}: {str(e)}")
     
     return networks
 
@@ -577,7 +471,6 @@ def get_vm_status(node, vmid, vmtype='qemu'):
     """Get detailed status for a specific VM, including disks and network info"""
     api = get_api()
     
-    # Get current status
     if vmtype == 'qemu':
         endpoint = f"nodes/{node}/qemu/{vmid}/status/current"
     else:  # LXC container
@@ -588,7 +481,7 @@ def get_vm_status(node, vmid, vmtype='qemu'):
     if not status:
         return None
         
-    # Get VM configuration for additional info
+    # Get config for additional info
     if vmtype == 'qemu':
         config_endpoint = f"nodes/{node}/qemu/{vmid}/config"
     else:  # LXC container
@@ -600,23 +493,41 @@ def get_vm_status(node, vmid, vmtype='qemu'):
         # Merge config into status
         status.update(config)
         
-        # Extract disk information using our dedicated function
-        status['disks'] = extract_disk_info(config, vmtype)
+        # Extract disk information using the simplified function
+        status['disks'] = extract_vm_disks(config)
         
-        # Extract network information using our dedicated function
-        status['networks'] = extract_network_info(config)
+        # Extract basic network interface information from config
+        networks = []
+        for key, value in config.items():
+            if key.startswith('net') and isinstance(value, str):
+                parts = value.split(',')
+                net_info = {'id': key}
+                
+                for part in parts:
+                    if '=' in part:
+                        k, v = part.split('=', 1)
+                        net_info[k] = v
+                
+                networks.append(net_info)
+        
+        # Get additional network info including IP addresses if available
+        networks = get_vm_network_info(api, node, vmid, vmtype, networks)
+        status['networks'] = networks
         
         # Try to get disk usage information for running VMs
         if vmtype == 'qemu' and status.get('status') == 'running':
             try:
                 # Get disk usage from rrd data
                 rrd_endpoint = f"nodes/{node}/qemu/{vmid}/rrddata"
-                rrd_data = api.get_request(rrd_endpoint)
+                rrd_data = api.get_request(rrd_endpoint, params={
+                    'timeframe': 'hour',
+                    'cf': 'AVERAGE'
+                })
                 
                 if rrd_data and len(rrd_data) > 0:
                     last_data = rrd_data[-1]
                     
-                    # Add I/O rates to each disk
+                    # Get disk I/O rates
                     for disk in status['disks']:
                         disk_id = disk['id'].replace('-', '_')
                         read_key = f"disk_{disk_id}_read_bytes"
@@ -629,34 +540,6 @@ def get_vm_status(node, vmid, vmtype='qemu'):
             except Exception as e:
                 print(f"Error getting disk usage for VM {vmid}: {str(e)}")
         
-        # Try to get IP addresses for running VMs using qemu-agent
-        if vmtype == 'qemu' and status.get('status') == 'running':
-            try:
-                agent_endpoint = f"nodes/{node}/qemu/{vmid}/agent/network-get-interfaces"
-                agent_data = api.get_request(agent_endpoint)
-                
-                if agent_data and 'result' in agent_data:
-                    network_interfaces = agent_data['result']
-                    
-                    # Add IP addresses to network interfaces
-                    for network in status['networks']:
-                        for interface in network_interfaces:
-                            if 'hardware-address' in interface and 'hwaddr' in network:
-                                if interface['hardware-address'].lower() == network['hwaddr'].lower():
-                                    ip_addresses = []
-                                    
-                                    if 'ip-addresses' in interface:
-                                        for ip_info in interface['ip-addresses']:
-                                            ip_addresses.append({
-                                                'ip': ip_info.get('ip-address', ''),
-                                                'prefix': ip_info.get('prefix', ''),
-                                                'type': ip_info.get('ip-address-type', '')
-                                            })
-                                    
-                                    network['ip_addresses'] = ip_addresses
-            except Exception as e:
-                print(f"Error getting IP addresses for VM {vmid}: {str(e)}")
-    
     return status
 
 def start_vm(node, vmid, vmtype='qemu'):

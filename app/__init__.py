@@ -27,6 +27,10 @@ def create_app(config_class=Config):
     from app.views.folder_api import bp as folder_api_bp
     app.register_blueprint(folder_api_bp)
     
+    # Initialize Proxmox API connection pool
+    from app.proxmox.api import init_proxmox_api
+    init_proxmox_api(app)
+    
     # Add template context processors
     @app.context_processor
     def inject_now():
@@ -54,4 +58,3 @@ def create_app(config_class=Config):
         return value
 
     return app
-
