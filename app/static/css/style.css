@@ -50,11 +50,15 @@ footer {
 }
 
 .folder-item {
-    padding: 5px;
-    margin-bottom: 2px;
+    padding: 8px;
+    margin-bottom: 3px;
     cursor: pointer;
     border-radius: 4px;
     user-select: none;
+    display: flex;
+    align-items: center;
+    position: relative;
+    transition: background-color 0.15s;
 }
 
 .folder-item:hover {
@@ -66,18 +70,38 @@ footer {
 }
 
 .folder-toggle {
-    margin-right: 5px;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    margin-right: 5px;
+}
+
+.folder-toggle i {
+    font-size: 14px;
 }
 
 .folder-name {
     font-weight: 500;
+    flex-grow: 1;
+    display: block;
 }
 
 .folder-content {
     margin-left: 20px;
     padding-left: 10px;
     border-left: 1px dashed #dee2e6;
+    /* Ensure consistent spacing */
+    margin-top: 2px;
+    margin-bottom: 5px;
+}
+
+/* Add styles to ensure the entire folder tree is properly structured */
+.folder-item i.fas {
+    margin-right: 5px;
+    color: #ffc107;
 }
 
 /* VM Item in sidebar */
@@ -91,6 +115,8 @@ footer {
     align-items: center;
     position: relative;
     user-select: none;
+    cursor: pointer;
+    transition: background-color 0.15s, border-color 0.15s;
 }
 
 .vm-item:hover {
@@ -119,6 +145,7 @@ footer {
 .vm-info {
     flex-grow: 1;
     min-width: 0;
+    padding-right: 25px; /* Make room for the link icon */
 }
 
 .vm-name {
@@ -128,6 +155,7 @@ footer {
     text-overflow: ellipsis;
     font-size: 13px;
     font-weight: 500;
+    cursor: pointer;
 }
 
 .vm-memory-bar {
@@ -147,16 +175,22 @@ footer {
 
 /* Link to VM details */
 .vm-link {
-    margin-left: 8px;
-    padding: 4px;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
     font-size: 12px;
     color: #6c757d;
-    transition: all 0.2s;
-    cursor: pointer;
+    z-index: 5; /* Increase z-index to ensure it's clickable */
+    padding: 4px 8px; /* Larger hit area */
+    border-radius: 3px;
+    background-color: transparent;
+    transition: background-color 0.15s, color 0.15s;
 }
 
 .vm-link:hover {
     color: #007bff;
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 /* Responsive adjustments */
@@ -182,20 +216,4 @@ footer {
 .folder-toggle {
     z-index: 2;
     position: relative;
-}
-
-/* VM link style */
-.vm-link {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 12px;
-    color: #6c757d;
-    z-index: 2;
-    padding: 4px;
-}
-
-.vm-link:hover {
-    color: #007bff;
 }

@@ -30,6 +30,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Initialize folder toggles
 function initFolderToggles() {
+    // Make entire folder item clickable to toggle folders
+    document.querySelectorAll('.folder-item').forEach(folderItem => {
+        folderItem.addEventListener('click', function(e) {
+            // If clicking the toggle icon, let the original handler work
+            if (e.target.closest('.folder-toggle')) {
+                return;
+            }
+            
+            // Otherwise, find and click the toggle
+            const toggle = this.querySelector('.folder-toggle');
+            if (toggle) {
+                // Create and dispatch a new click event on the toggle
+                const clickEvent = new MouseEvent('click', {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window
+                });
+                toggle.dispatchEvent(clickEvent);
+            }
+        });
+    });
+
+    // Still keep original toggle functionality
     document.querySelectorAll('.folder-toggle').forEach(toggle => {
         toggle.addEventListener('click', function(e) {
             e.preventDefault();
@@ -51,20 +74,6 @@ function initFolderToggles() {
                     // Store state in localStorage
                     localStorage.setItem(`folder_${folderId}_open`, 'false');
                 }
-            }
-        });
-    });
-    
-    // Make folder name also toggle the folder
-    document.querySelectorAll('.folder-name').forEach(name => {
-        name.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const folderItem = this.closest('.folder-item');
-            const toggle = folderItem.querySelector('.folder-toggle');
-            if (toggle) {
-                toggle.click();
             }
         });
     });
@@ -91,16 +100,15 @@ function initFolderToggles() {
 
 // Initialize click handlers for VM items
 function initVMClickHandlers() {
-    // Handle click events on VM items
+    // Make the entire VM item clickable
     document.querySelectorAll('.vm-item').forEach(vmItem => {
         vmItem.addEventListener('click', function(e) {
-            // If clicking the link icon, let the default action happen
+            // Don't trigger if clicking the link icon
             if (e.target.closest('.vm-link')) {
                 return;
             }
             
-            // Otherwise navigate manually
-            e.preventDefault();
+            // Navigate to VM details
             const node = this.getAttribute('data-node');
             const vmid = this.getAttribute('data-id');
             const type = this.getAttribute('data-type');

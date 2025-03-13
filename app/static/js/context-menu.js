@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.vm-item').forEach(vmItem => {
             vmItem.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 showContextMenu(e, this.getAttribute('data-id'), 'vm');
             });
         });
@@ -41,6 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.folder-item').forEach(folderItem => {
             folderItem.addEventListener('contextmenu', function(e) {
                 e.preventDefault();
+                e.stopPropagation();
                 showContextMenu(e, this.getAttribute('data-folder-id'), 'folder');
             });
         });
@@ -224,6 +226,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         };
+        
+        // Make folder tree radio labels clickable
+        document.querySelectorAll('#folderTreeView .form-check-label').forEach(label => {
+            label.addEventListener('click', function() {
+                const radio = document.getElementById(this.getAttribute('for'));
+                if (radio) {
+                    radio.checked = true;
+                }
+            });
+        });
         
         // Set up folder toggle clicks
         document.querySelectorAll('.folder-tree-toggle').forEach(toggle => {
