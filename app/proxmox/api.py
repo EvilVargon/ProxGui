@@ -241,40 +241,157 @@ def get_vm_status(node, vmid, vmtype='qemu'):
         
         # Extract disk information
         disks = []
+        disk_types = ['scsi', 'virtio', 'ide', 'sata', 'rootfs', 'unused']
+        
+        # Dictionaries to handle different storage mappings
+        storage_mapping = {}
+        
+        # First, collect storage information
         for key, value in config.items():
-            if key.startswith('scsi') or key.startswith('virtio') or key.startswith('ide') or key.startswith('sata'):
-                if isinstance(value, str) and value.startswith('local') and ':' in value:
-                    parts = value.split(',')
+            # Parse storage volumes
+            if key.startswith('volume') and isinstance(value, str):
+                try:
+                    storage_parts = value.split(':')
+                    if len(storage_parts) >= 2:
+                        storage_mapping[key] = {
+                            'storage': storage_parts[0],
+                            'path': value
+                        }
+                except Exception as e:
+                    print(f"Error parsing volume {key}: {e}")
+        
+        # Then, collect disk sizes and configurations
+        for key, value in config.items():
+            # Look for specific disk type keys
+            is_disk_key = any(key.startswith(disk_type) for disk_type in disk_types)
+            
+            try:
+                # Handle both string and dictionary configurations
+                if is_disk_key:
                     disk_info = {'id': key}
                     
-                    # Get disk size and format
-                    for part in parts:
-                        if part.startswith('size='):
-                            size_str = part.split('=')[1]
-                            # Convert size to GB
-                            if size_str.endswith('G'):
-                                disk_info['size'] = float(size_str[:-1])
-                            elif size_str.endswith('T'):
-                                disk_info['size'] = float(size_str[:-1]) * 1024
-                            elif size_str.endswith('M'):
-                                disk_info['size'] = float(size_str[:-1]) / 1024
-                            else:
-                                disk_info['size'] = float(size_str)
-                        elif '=' in part:
-                            key, val = part.split('=', 1)
-                            disk_info[key] = val
+                    # Handle different configuration types
+                    if isinstance(value, str):
+                        parts = value.split(',')
+                        
+                        for part in parts:
+                            if '=' in part:
+                                subkey, subval = part.split('=', 1)
+                                
+                                # Size parsing
+                                if subkey == 'size':
+                                    # Convert size to GB for different formats
+                                    try:
+                                        if isinstance(subval, str):
+                                            # Strip any whitespace
+                                            subval = subval.strip()
+                                            
+                                            # Handle various size formats
+                                            if not subval:
+                                                continue  # Skip empty values
+                                            
+                                            if subval.endswith('G'):
+                                                disk_info['size'] = float(subval[:-1])
+                                            elif subval.endswith('T'):
+                                                disk_info['size'] = float(subval[:-1]) * 1024
+                                            elif subval.endswith('M'):
+                                                disk_info['size'] = float(subval[:-1]) / 1024
+                                            else:
+                                                # Try to convert direct numeric values
+                                                disk_info['size'] = float(subval)
+                                    except (ValueError, TypeError) as e:
+                                        print(f"Could not parse size for {key}: {subval}. Error: {e}")
+                                        continue  # Skip this disk if size can't be parsed
+                                
+                                # Volume reference
+                                elif subkey.startswith('volume'):
+                                    if subval in storage_mapping:
+                                        disk_info['storage'] = storage_mapping[subval]['storage']
+                                        disk_info['disk_path'] = storage_mapping[subval]['path']
+                                
+                                # Other metadata
+                                elif subkey in ['format', 'media', 'cache']:
+                                    disk_info[subkey] = subval
+                        
+                        # Fallback storage parsing
+                        if 'storage' not in disk_info:
+                            storage_parts = value.split(':')
+                            if len(storage_parts) >= 2:
+                                disk_info['storage'] = storage_parts[0]
                     
-                    # Add storage name
-                    storage = value.split(':')[0]
-                    disk_info['storage'] = storage
+                    elif isinstance(value, dict):
+                        # Direct dictionary configuration (for LXC containers)
+                        if 'storage' in value:
+                            disk_info['storage'] = value['storage']
+                        if 'size' in value:
+                            try:
+                                # Ensure size is converted to float
+                                disk_info['size'] = float(value['size'])
+                            except (ValueError, TypeError) as e:
+                                print(f"Could not parse size for {key}: {value['size']}. Error: {e}")
+                                continue  # Skip this disk if size can't be parsed
                     
-                    # Add disk path
-                    disk_path = value.split(',')[0]
-                    disk_info['disk_path'] = disk_path
-                    
-                    disks.append(disk_info)
+                    # Validate and add disk info
+                    if 'size' in disk_info:
+                        # Ensure size is always a float and rounded to 1 decimal
+                        try:
+                            disk_info['size'] = round(float(disk_info['size']), 1)
+                        except (ValueError, TypeError) as e:
+                            print(f"Rounding error for disk {key}: {e}")
+                            disk_info['size'] = 0.0
+                        
+                        # Only add if we have meaningful information
+                        if disk_info.get('storage') or disk_info.get('size') > 0:
+                            disks.append(disk_info)
+            except Exception as e:
+                print(f"Error parsing disk {key}: {e}")
         
-        status['disks'] = disks
+        # Fallback parsing if no disks found
+        if not disks:
+            try:
+                # Check for LXC rootfs or other potential storage configurations
+                for key, value in config.items():
+                    if key == 'rootfs' or key.startswith('mp') or key.startswith('unused'):
+                        try:
+                            disk_info = {'id': key}
+                            
+                            # Handle different configuration types for LXC and unused disks
+                            if isinstance(value, str):
+                                # Typical LXC volume format: local:100/container.root
+                                storage_parts = value.split(':')
+                                if len(storage_parts) >= 2:
+                                    disk_info['storage'] = storage_parts[0]
+                                    
+                                    # Try to extract size if possible
+                                    size_match = storage_parts[1].split('/')
+                                    if len(size_match) > 0:
+                                        try:
+                                            # Convert from MB to GB, handling potential non-numeric values
+                                            size_str = size_match[0].strip()
+                                            disk_info['size'] = round(float(size_str) / 1024, 1) if size_str else 0.0
+                                        except (ValueError, TypeError):
+                                            pass
+                            
+                            elif isinstance(value, dict):
+                                # Direct dictionary configuration
+                                if 'storage' in value:
+                                    disk_info['storage'] = value['storage']
+                                if 'size' in value:
+                                    try:
+                                        disk_info['size'] = round(float(value['size']), 1)
+                                    except (ValueError, TypeError):
+                                        pass
+                            
+                            # Add only if we have some meaningful information
+                            if 'storage' in disk_info or (disk_info.get('size', 0) > 0):
+                                disks.append(disk_info)
+                        except Exception as e:
+                            print(f"Fallback disk parsing error for {key}: {e}")
+            except Exception as e:
+                print(f"Final fallback disk parsing error: {e}")
+        
+        # Ensure disks are always a list, even if empty
+        status['disks'] = disks if disks else [] 
         
         # Extract network information
         networks = []
