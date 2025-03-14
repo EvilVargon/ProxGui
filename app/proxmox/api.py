@@ -702,3 +702,212 @@ def reboot_vm(node, vmid, vmtype='qemu'):
         endpoint = f"nodes/{node}/lxc/{vmid}/status/reboot"
     
     return api.post_request(endpoint, {})
+
+def create_vm(node, name, **kwargs):
+    """
+    Create a new VM either from an ISO or from a template
+    
+    Args:
+        node: Node to create the VM on
+        name: Name for the new VM
+        **kwargs: Additional parameters:
+            - template_vmid: For template-based creation, the source VM ID
+            - cpu_cores: Number of CPU cores (ISO creation)
+            - memory: Memory in MB (ISO creation)
+            - storage: Storage for disk
+            - disk_size: Disk size in GB (ISO creation)
+            - iso: ISO file volid (ISO creation)
+            - vlan: VLAN tag for the network interface
+            - start_after_create: Whether to start the VM after creation
+    
+    Returns:
+        API response object or None on error
+    """
+    import logging
+    import time
+    import traceback
+    
+    logger = logging.getLogger(__name__)
+    logger.info(f"Creating VM on node {node}: {name} with params {kwargs}")
+    
+    api = get_api()
+    if not api:
+        logger.error("Failed to get API connection")
+        return None
+    
+    try:
+        # Get next available VMID
+        cluster_resources = api.get_request("cluster/resources", {'type': 'vm'})
+        if not cluster_resources:
+            logger.error("Failed to get cluster resources")
+            return {'error': {'message': 'Failed to get cluster resources'}}
+            
+        existing_vmids = [res.get('vmid', 0) for res in cluster_resources if 'vmid' in res]
+        next_vmid = max(existing_vmids) + 1 if existing_vmids else 100
+        logger.info(f"Using next available VMID: {next_vmid}")
+        
+        # Check if this is a template clone or ISO installation
+        if 'template_vmid' in kwargs:
+            # Template-based VM creation
+            template_vmid = kwargs.get('template_vmid')
+            storage = kwargs.get('storage', '')
+            vlan = kwargs.get('vlan')
+            start_after_create = kwargs.get('start_after_create', False)
+            
+            logger.info(f"Creating VM from template {template_vmid} on node {node}")
+            
+            # Set up clone parameters
+            params = {
+                'newid': next_vmid,
+                'name': name,
+                'full': 1  # Full clone (not linked)
+            }
+            
+            # Add target storage if specified
+            if storage:
+                params['target'] = storage
+                logger.info(f"Using target storage: {storage}")
+            
+            # Create the clone
+            endpoint = f"nodes/{node}/qemu/{template_vmid}/clone"
+            logger.info(f"Cloning from template with endpoint: {endpoint} and params: {params}")
+            result = api.post_request(endpoint, params)
+            
+            if not result:
+                logger.error(f"Failed to clone template {template_vmid}")
+                return {'error': {'message': f'Failed to clone template {template_vmid}'}}
+            
+            logger.info(f"Clone result: {result}")
+            
+            # For Proxmox, a UPID string indicates success
+            if isinstance(result, str) and result.startswith("UPID:"):
+                logger.info(f"VM clone task started with UPID: {result} for VM ID: {next_vmid}")
+                # For UPID responses, structure it as a success result
+                result = {'data': next_vmid, 'task_id': result}
+            
+            # If clone was successful and VLAN is specified, update the network
+            if result and vlan:
+                logger.info(f"Setting VLAN tag {vlan} for VM {next_vmid}")
+                
+                # Allow some time for the clone operation to start
+                time.sleep(2)  # Wait 2 seconds
+                
+                # Get current config
+                config_endpoint = f"nodes/{node}/qemu/{next_vmid}/config"
+                config = api.get_request(config_endpoint)
+                
+                if config:
+                    # Find the network interface
+                    net_device = None
+                    for key in config:
+                        if key.startswith('net') and isinstance(config[key], str):
+                            net_device = key
+                            break
+                    
+                    if net_device:
+                        # Extract current config
+                        net_config = config[net_device]
+                        logger.info(f"Found network device {net_device} with config: {net_config}")
+                        
+                        # Add VLAN tag
+                        if 'tag=' not in net_config:
+                            if net_config.endswith(','):
+                                net_config += f"tag={vlan}"
+                            else:
+                                net_config += f",tag={vlan}"
+                        else:
+                            # Replace existing tag
+                            parts = net_config.split(',')
+                            new_parts = []
+                            for part in parts:
+                                if part.startswith('tag='):
+                                    new_parts.append(f"tag={vlan}")
+                                else:
+                                    new_parts.append(part)
+                            net_config = ','.join(new_parts)
+                        
+                        logger.info(f"Updated network config: {net_config}")
+                        
+                        # Update network interface
+                        update_params = {net_device: net_config}
+                        api.post_request(config_endpoint, update_params)
+                    else:
+                        logger.warning(f"No network device found for VM {next_vmid}")
+            
+            # Start VM if requested
+            if result and start_after_create:
+                logger.info(f"Starting VM {next_vmid} after creation")
+                start_endpoint = f"nodes/{node}/qemu/{next_vmid}/status/start"
+                api.post_request(start_endpoint, {})
+            
+            return result
+        else:
+            # ISO-based VM creation
+            cpu_cores = kwargs.get('cpu_cores', 1)
+            memory = kwargs.get('memory', 512)
+            storage = kwargs.get('storage', 'local-lvm')
+            disk_size = kwargs.get('disk_size', 8)
+            iso = kwargs.get('iso', '')
+            vlan = kwargs.get('vlan')
+            start_after_create = kwargs.get('start_after_create', False)
+            
+            logger.info(f"Creating VM from ISO {iso} on node {node}")
+            
+            # Format parameters for VM creation
+            params = {
+                'vmid': next_vmid,
+                'name': name,
+                'cores': cpu_cores,
+                'memory': memory,
+                'ostype': 'l26',  # Linux 2.6+ kernel
+            }
+            
+            # Add disk
+            if storage and disk_size:
+                params['virtio0'] = f"{storage}:{disk_size}"
+                logger.info(f"Using storage {storage} with disk size {disk_size}GB")
+            
+            # Add ISO drive
+            if iso:
+                params['ide2'] = f"{iso},media=cdrom"
+                params['boot'] = 'dc'  # Boot from CD-ROM then hard disk
+                logger.info(f"Using ISO: {iso}")
+            else:
+                params['boot'] = 'c'  # Boot from hard disk
+                logger.warning("No ISO specified for ISO-based VM creation")
+            
+            # Add network interface with VLAN if specified
+            if vlan:
+                params['net0'] = f"virtio,bridge=vmbr0,tag={vlan}"
+                logger.info(f"Using VLAN tag: {vlan}")
+            else:
+                params['net0'] = "virtio,bridge=vmbr0"
+            
+            # Create the VM
+            endpoint = f"nodes/{node}/qemu"
+            logger.info(f"Creating VM with endpoint: {endpoint} and params: {params}")
+            result = api.post_request(endpoint, params)
+            
+            if not result:
+                logger.error("Failed to create VM from ISO")
+                return {'error': {'message': 'Failed to create VM from ISO'}}
+                
+            logger.info(f"VM creation result: {result}")
+            
+            # For Proxmox, a UPID string indicates success
+            if isinstance(result, str) and result.startswith("UPID:"):
+                logger.info(f"VM creation task started with UPID: {result} for VM ID: {next_vmid}")
+                # For UPID responses, structure it as a success result
+                result = {'data': next_vmid, 'task_id': result}
+            
+            # Start VM if requested
+            if result and start_after_create:
+                logger.info(f"Starting VM {next_vmid} after creation")
+                start_endpoint = f"nodes/{node}/qemu/{next_vmid}/status/start"
+                api.post_request(start_endpoint, {})
+            
+            return result
+    except Exception as e:
+        error_tb = traceback.format_exc()
+        logger.error(f"Error in create_vm: {str(e)}\n{error_tb}")
+        return {'error': {'message': f'Exception in create_vm: {str(e)}'}} 

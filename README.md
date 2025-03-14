@@ -4,12 +4,12 @@ A user-friendly web interface for Proxmox VE that provides a simplified experien
 
 ## Features
 
-- Active Directory authentication
-- User dashboard showing only owned VMs
-- VM performance monitoring
+- Active Directory authentication [TODO]
+- User dashboard showing only owned VMs [TODO]
+- VM performance monitoring [TODO]
 - Start/stop VM controls
 - Create/restore snapshots
-- Embedded noVNC console
+- Embedded noVNC console [TODO]
 - Simplified VM creation
 
 ## Setup and Installation
@@ -59,13 +59,3 @@ A user-friendly web interface for Proxmox VE that provides a simplified experien
   - `views/`: View functions
 - `requirements.txt`: Python dependencies
 - `run.py`: Application entry point
-
-## Next Steps
-
-This is a basic implementation. The following features need to be implemented:
-
-1. Real Active Directory integration with LDAP
-2. VM ownership based on AD groups
-3. Full VM management operations
-4. Embedded noVNC console
-5. Proper error handling and logging

@@ -4,6 +4,7 @@ import datetime
 import os
 import urllib3
 
+
 # Disable insecure request warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -30,6 +31,10 @@ def create_app(config_class=Config):
     # Initialize Proxmox API connection pool
     from app.proxmox.api import init_proxmox_api
     init_proxmox_api(app)
+
+    # Register VM API blueprint
+    from app.views.vm_api import bp as vm_api_bp
+    app.register_blueprint(vm_api_bp)
     
     # Add template context processors
     @app.context_processor

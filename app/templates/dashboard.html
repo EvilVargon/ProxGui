@@ -249,6 +249,7 @@
 {% endif %}
 
 <!-- Create VM Modal (Placeholder) - We'll keep this for VM creation functionality -->
+<!-- Create VM Modal - Updated with ISO and Template options -->
 <div class="modal fade" id="createVmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -257,63 +258,123 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
+                <!-- Create VM Form -->
                 <form id="createVmForm">
+                    <!-- Creation Type Selection -->
+                    <div class="mb-3">
+                        <label class="form-label">Creation Method</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="creationType" id="typeIso" value="iso" checked>
+                            <label class="btn btn-outline-primary" for="typeIso">From ISO Image</label>
+                            
+                            <input type="radio" class="btn-check" name="creationType" id="typeTemplate" value="template">
+                            <label class="btn btn-outline-primary" for="typeTemplate">From Template</label>
+                        </div>
+                    </div>
+                    
+                    <!-- Common Settings -->
                     <div class="mb-3">
                         <label for="vmName" class="form-label">VM Name</label>
                         <input type="text" class="form-control" id="vmName" required>
                     </div>
-                    <div class="mb-3">
-                        <label for="vmTemplate" class="form-label">Template</label>
-                        <select class="form-select" id="vmTemplate">
-                            <option value="ubuntu">Ubuntu 22.04</option>
-                            <option value="debian">Debian 11</option>
-                            <option value="centos">CentOS 9 Stream</option>
-                            <option value="windows">Windows Server 2022</option>
-                        </select>
+                    
+                    <!-- ISO-specific Settings -->
+                    <div id="isoOptions">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="isoImage" class="form-label">ISO Image</label>
+                                <select class="form-select" id="isoImage">
+                                    <option value="">Loading ISOs...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="storage" class="form-label">Storage</label>
+                                <select class="form-select" id="storage">
+                                    <option value="">Loading storage options...</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="vmCpu" class="form-label">CPU Cores</label>
+                                <select class="form-select" id="vmCpu">
+                                    <option value="1">1 Core</option>
+                                    <option value="2" selected>2 Cores</option>
+                                    <option value="4">4 Cores</option>
+                                    <option value="8">8 Cores</option>
+                                    <option value="16">16 Cores</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="vmMemory" class="form-label">Memory</label>
+                                <select class="form-select" id="vmMemory">
+                                    <option value="512">512 MB</option>
+                                    <option value="1024">1 GB</option>
+                                    <option value="2048" selected>2 GB</option>
+                                    <option value="4096">4 GB</option>
+                                    <option value="8192">8 GB</option>
+                                    <option value="16384">16 GB</option>
+                                    <option value="32768">32 GB</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="vmDisk" class="form-label">Disk Size</label>
+                                <select class="form-select" id="vmDisk">
+                                    <option value="8">8 GB</option>
+                                    <option value="16">16 GB</option>
+                                    <option value="32" selected>32 GB</option>
+                                    <option value="64">64 GB</option>
+                                    <option value="128">128 GB</option>
+                                    <option value="256">256 GB</option>
+                                    <option value="512">512 GB</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="vmCpu" class="form-label">CPU Cores</label>
-                            <select class="form-select" id="vmCpu">
-                                <option value="1">1 Core</option>
-                                <option value="2" selected>2 Cores</option>
-                                <option value="4">4 Cores</option>
-                                <option value="8">8 Cores</option>
+                    
+                    <!-- Template-specific Settings -->
+                    <div id="templateOptions" style="display: none;">
+                        <div class="mb-3">
+                            <label for="vmTemplate" class="form-label">VM Template</label>
+                            <select class="form-select" id="vmTemplate">
+                                <option value="">Loading templates...</option>
                             </select>
                         </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="vmMemory" class="form-label">Memory</label>
-                            <select class="form-select" id="vmMemory">
-                                <option value="1">1 GB</option>
-                                <option value="2" selected>2 GB</option>
-                                <option value="4">4 GB</option>
-                                <option value="8">8 GB</option>
-                                <option value="16">16 GB</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="vmStorage" class="form-label">Storage</label>
-                            <select class="form-select" id="vmStorage">
-                                <option value="20">20 GB</option>
-                                <option value="50" selected>50 GB</option>
-                                <option value="100">100 GB</option>
-                                <option value="200">200 GB</option>
+                        
+                        <div class="mb-3">
+                            <label for="templateStorage" class="form-label">Target Storage (optional)</label>
+                            <select class="form-select" id="templateStorage">
+                                <option value="">Use source storage</option>
+                                <!-- Storage options will be populated -->
                             </select>
                         </div>
                     </div>
+                    
+                    <!-- Network Settings -->
                     <div class="mb-3">
-                        <label for="vmNode" class="form-label">Node</label>
-                        <select class="form-select" id="vmNode">
-                            {% if cluster_info and cluster_info.status %}
-                                {% for node in cluster_info.status %}
-                                    {% if node.online == 1 %}
-                                    <option value="{{ node.name }}">{{ node.name }}</option>
-                                    {% endif %}
-                                {% endfor %}
-                            {% else %}
-                            <option value="">No nodes available</option>
-                            {% endif %}
-                        </select>
+                        <label for="vmVlan" class="form-label">VLAN Tag (optional)</label>
+                        <input type="number" class="form-control" id="vmVlan" min="1" max="4094" placeholder="Leave empty for no VLAN">
+                    </div>
+                    
+                    <!-- Advanced Options -->
+                    <div class="mb-3">
+                        <label class="form-label d-block">Advanced Options</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" id="startAfterCreate" checked>
+                            <label class="form-check-label" for="startAfterCreate">Start VM after creation</label>
+                        </div>
+                    </div>
+                    
+                    <!-- Automatic Node Selection Info -->
+                    <div class="alert alert-info">
+                        <strong>Node Selection:</strong> VM will be created on the node with the lowest memory usage.
+                        <div id="bestNodeInfo" class="mt-2">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            Checking available nodes...
+                        </div>
                     </div>
                 </form>
             </div>
@@ -327,6 +388,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='js/vm-creation.js') }}"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
 <script>
 // Get chart data from the server-provided variables
