@@ -407,8 +407,8 @@ const initialMemData = JSON.parse('{{ memory_history|default([])|tojson|safe }}'
 const initialTimestamps = JSON.parse('{{ history_timestamps|default([])|tojson|safe }}');
 
 // Track current time periods for each chart
-let cpuTimePeriod = 'hour';
-let memTimePeriod = 'hour';
+let cpuTimePeriod = '{{ current_time_period }}';
+let memTimePeriod = '{{ current_time_period }}';
 
 // Create charts with common configuration options
 function createChartConfig(data, labels, datasetLabel, color) {
@@ -507,6 +507,37 @@ function updateChart(chart, data, timestamps) {
     chart.data.labels = timestamps;
     chart.update();
 }
+
+// Initialize dropdown texts based on initial period
+const timePeriodLabels = {
+    'hour': 'Last Hour',
+    'day': 'Last Day',
+    'week': 'Last Week',
+    'month': 'Last Month',
+    'year': 'Last Year',
+    'fiveyear': 'Last 5 Years'
+};
+
+// Set initial dropdown text
+document.getElementById('cpuTimeDropdown').textContent = timePeriodLabels[cpuTimePeriod] || 'Last Hour';
+document.getElementById('memTimeDropdown').textContent = timePeriodLabels[memTimePeriod] || 'Last Hour';
+
+// Set initial active state
+document.querySelectorAll('.cpu-time-option').forEach(opt => {
+    if (opt.dataset.period === cpuTimePeriod) {
+        opt.classList.add('active');
+    } else {
+        opt.classList.remove('active');
+    }
+});
+
+document.querySelectorAll('.mem-time-option').forEach(opt => {
+    if (opt.dataset.period === memTimePeriod) {
+        opt.classList.add('active');
+    } else {
+        opt.classList.remove('active');
+    }
+});
 
 // Handle time period selection for CPU chart
 document.querySelectorAll('.cpu-time-option').forEach(option => {

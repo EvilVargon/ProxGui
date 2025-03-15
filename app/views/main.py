@@ -330,8 +330,7 @@ def get_cluster_stats():
     # Get chart type and time period from query parameters
     chart_type = request.args.get('chart_type')
     time_period = request.args.get('time_period', 'hour')
-    
-    if time_period not in ['hour', 'day', 'week', 'month']:
+    if time_period not in ['hour', 'day', 'week', 'month', 'year', 'fiveyear']:
         time_period = 'hour'
     
     try:
