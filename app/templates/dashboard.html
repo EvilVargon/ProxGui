@@ -70,7 +70,7 @@
             </div>
             <div class="card-body">
                 <div class="row">
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <h6>CPU Usage</h6>
                         <div class="progress mb-2" style="height: 25px;">
                             <div class="progress-bar bg-primary" role="progressbar" style="width: {{ cluster_cpu_percent }}%;" 
@@ -80,7 +80,7 @@
                         </div>
                         <p class="small text-muted text-end">{{ cluster_cpu_used }} / {{ cluster_cpu_total }} cores</p>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-6">
                         <h6>Memory Usage</h6>
                         <div class="progress mb-2" style="height: 25px;">
                             <div class="progress-bar bg-success" role="progressbar" style="width: {{ cluster_mem_percent }}%;" 
@@ -90,16 +90,6 @@
                         </div>
                         <p class="small text-muted text-end">{{ cluster_mem_used }} / {{ cluster_mem_total }} GB</p>
                     </div>
-                    <div class="col-md-4">
-                        <h6>Storage Usage</h6>
-                        <div class="progress mb-2" style="height: 25px;">
-                            <div class="progress-bar bg-info" role="progressbar" style="width: {{ cluster_storage_percent }}%;" 
-                                 aria-valuenow="{{ cluster_storage_percent }}" aria-valuemin="0" aria-valuemax="100">
-                                {{ cluster_storage_percent }}%
-                            </div>
-                        </div>
-                        <p class="small text-muted text-end">{{ cluster_storage_used }} / {{ cluster_storage_total }} GB</p>
-                    </div>
                 </div>
             </div>
         </div>
@@ -108,6 +98,16 @@
 
 <!-- Performance Graphs -->
 <div class="row mb-4">
+    <div class="col-md-12 mb-2">
+        <div class="d-flex justify-content-end">
+            <div class="btn-group" role="group" aria-label="Time period selector">
+                <a href="{{ url_for('main.dashboard', time_period='hour') }}" class="btn btn-sm {% if current_time_period == 'hour' %}btn-primary{% else %}btn-outline-primary{% endif %}">Last Hour</a>
+                <a href="{{ url_for('main.dashboard', time_period='day') }}" class="btn btn-sm {% if current_time_period == 'day' %}btn-primary{% else %}btn-outline-primary{% endif %}">Last Day</a>
+                <a href="{{ url_for('main.dashboard', time_period='week') }}" class="btn btn-sm {% if current_time_period == 'week' %}btn-primary{% else %}btn-outline-primary{% endif %}">Last Week</a>
+                <a href="{{ url_for('main.dashboard', time_period='month') }}" class="btn btn-sm {% if current_time_period == 'month' %}btn-primary{% else %}btn-outline-primary{% endif %}">Last Month</a>
+            </div>
+        </div>
+    </div>
     <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header">
@@ -154,7 +154,7 @@
                             {% if cluster_info and cluster_info.status %}
                                 {% for node in node_status %}
                                 <tr>
-                                    <td>{{ node.name }}</td>
+                                    <td>{{ node.node }}</td>
                                     <td>
                                         <span class="badge {% if node.online %}bg-success{% else %}bg-danger{% endif %}">
                                             {% if node.online %}Online{% else %}Offline{% endif %}
@@ -205,7 +205,6 @@
                             <tr>
                                 <th>Storage</th>
                                 <th>Type</th>
-                                <th>Status</th>
                                 <th>Usage</th>
                                 <th>Available</th>
                                 <th>Total</th>
@@ -217,11 +216,6 @@
                                 <tr>
                                     <td>{{ storage.storage }}</td>
                                     <td>{{ storage.type }}</td>
-                                    <td>
-                                        <span class="badge {% if storage.active %}bg-success{% else %}bg-danger{% endif %}">
-                                            {% if storage.active %}Active{% else %}Inactive{% endif %}
-                                        </span>
-                                    </td>
                                     <td>
                                         <div class="progress" style="height: 5px;">
                                             <div class="progress-bar bg-info" role="progressbar" style="width: {{ storage.usage_percent }}%;" 
@@ -235,7 +229,7 @@
                                 {% endfor %}
                             {% else %}
                                 <tr>
-                                    <td colspan="6" class="text-center">No storage data available</td>
+                                    <td colspan="5" class="text-center">No storage data available</td>
                                 </tr>
                             {% endif %}
                         </tbody>
@@ -392,15 +386,16 @@
 <script src="{{ url_for('static', filename='lib/chart.js/chart.min.js') }}"></script>
 <script>
 // Get chart data from the server-provided variables
-const cpuHistoryData = JSON.parse('{{ cpu_history|default([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])|tojson|safe }}');
-const memHistoryData = JSON.parse('{{ memory_history|default([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])|tojson|safe }}');
+const cpuHistoryData = JSON.parse('{{ cpu_history|default([])|tojson|safe }}');
+const memHistoryData = JSON.parse('{{ memory_history|default([])|tojson|safe }}');
+const historyTimestamps = JSON.parse('{{ history_timestamps|default([])|tojson|safe }}');
 
 // CPU Chart
 const cpuCtx = document.getElementById('cpuChart').getContext('2d');
 window.cpuChart = new Chart(cpuCtx, {
     type: 'line',
     data: {
-        labels: ['', '', '', '', '', '', '', '', '', '', '', ''],
+        labels: historyTimestamps,
         datasets: [{
             label: 'CPU Load (%)',
             data: cpuHistoryData,
@@ -462,7 +457,7 @@ const memCtx = document.getElementById('memoryChart').getContext('2d');
 window.memChart = new Chart(memCtx, {
     type: 'line',
     data: {
-        labels: ['', '', '', '', '', '', '', '', '', '', '', ''],
+        labels: historyTimestamps,
         datasets: [{
             label: 'Memory Usage (%)',
             data: memHistoryData,
@@ -519,9 +514,24 @@ window.memChart = new Chart(memCtx, {
     }
 });
 
+// Get the current time period from the URL
+function getCurrentTimePeriod() {
+    const urlParams = new URLSearchParams(window.location.search);
+    let period = urlParams.get('time_period');
+    
+    // Default to 'hour' if not specified or invalid
+    if (!period || !['hour', 'day', 'week', 'month'].includes(period)) {
+        period = 'hour';
+    }
+    
+    return period;
+}
+
 // Refresh dashboard data every 30 seconds
 function refreshDashboardData() {
-    fetch('/api/cluster-stats')
+    const timePeriod = getCurrentTimePeriod();
+    
+    fetch('/api/cluster-stats?time_period=' + timePeriod)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -533,12 +543,26 @@ function refreshDashboardData() {
                 
                 // Update charts
                 cpuChart.data.datasets[0].data = data.cpu_history;
-                memChart.data.datasets[0].data = data.memory_history;
+                cpuChart.data.labels = data.history_timestamps;
                 cpuChart.update();
+                
+                memChart.data.datasets[0].data = data.memory_history;
+                memChart.data.labels = data.history_timestamps;
                 memChart.update();
                 
+                // Adjust refresh interval based on time period
+                let refreshInterval = 30000; // 30 seconds default for 'hour'
+                
+                if (data.time_period === 'day') {
+                    refreshInterval = 60000; // 1 minute
+                } else if (data.time_period === 'week') {
+                    refreshInterval = 300000; // 5 minutes
+                } else if (data.time_period === 'month') {
+                    refreshInterval = 600000; // 10 minutes
+                }
+                
                 // Schedule next refresh
-                setTimeout(refreshDashboardData, 30000);
+                setTimeout(refreshDashboardData, refreshInterval);
             }
         })
         .catch(error => {
@@ -548,7 +572,8 @@ function refreshDashboardData() {
         });
 }
 
-// Start the refresh cycle
-setTimeout(refreshDashboardData, 30000);
+// Start the refresh cycle with appropriate interval based on time period
+const initialRefreshDelay = getCurrentTimePeriod() === 'hour' ? 30000 : 60000;
+setTimeout(refreshDashboardData, initialRefreshDelay);
 </script>
 {% endblock %}
