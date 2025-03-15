@@ -307,14 +307,27 @@ def get_cluster_stats():
     if 'user' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
     
-    # Get time period from query parameter (default to 'hour')
+    # Get chart type and time period from query parameters
+    chart_type = request.args.get('chart_type')
     time_period = request.args.get('time_period', 'hour')
+    
     if time_period not in ['hour', 'day', 'week', 'month']:
         time_period = 'hour'
     
     try:
         update_history_data()
         
+        # If a specific chart type is requested, return only data for that chart
+        if chart_type in ['cpu', 'memory']:
+            return jsonify({
+                'success': True,
+                'cpu_history': history[time_period]['cpu'] if chart_type == 'cpu' else [],
+                'memory_history': history[time_period]['memory'] if chart_type == 'memory' else [],
+                'history_timestamps': history[time_period]['timestamps'],
+                'time_period': time_period
+            })
+        
+        # Otherwise return all stats for the dashboard
         user = session['user']
         vms = get_user_vms(user['username'], user['groups'])
         node_status = get_node_status()
@@ -331,6 +344,9 @@ def get_cluster_stats():
             'time_period': time_period
         })
     except Exception as e:
+        import traceback
+        print(f"Error in API: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({
             'success': False,
             'error': str(e)

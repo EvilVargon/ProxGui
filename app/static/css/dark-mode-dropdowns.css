@@ -1,0 +1,40 @@
+/* Dark mode styles for dropdown menus */
+body.dark-mode .dropdown-menu {
+    background-color: var(--dark-card-bg);
+    border-color: var(--dark-border);
+  }
+  
+  body.dark-mode .dropdown-item {
+    color: var(--dark-text);
+  }
+  
+  body.dark-mode .dropdown-item:hover,
+  body.dark-mode .dropdown-item:focus {
+    background-color: var(--dark-hover);
+    color: var(--dark-text);
+  }
+  
+  body.dark-mode .dropdown-item.active {
+    background-color: #0d6efd;
+    color: #fff;
+  }
+  
+  body.dark-mode .dropdown-toggle {
+    color: var(--dark-text);
+    border-color: var(--dark-border);
+  }
+  
+  body.dark-mode .dropdown-toggle:hover {
+    background-color: var(--dark-hover);
+    border-color: var(--dark-border);
+  }
+  
+  body.dark-mode .dropdown-menu-end {
+    right: 0;
+    left: auto;
+  }
+  
+  /* Make sure dropdown menu has proper z-index to appear over charts */
+  .dropdown-menu {
+    z-index: 1050;
+  }

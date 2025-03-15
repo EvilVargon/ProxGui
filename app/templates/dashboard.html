@@ -98,20 +98,21 @@
 
 <!-- Performance Graphs -->
 <div class="row mb-4">
-    <div class="col-md-12 mb-2">
-        <div class="d-flex justify-content-end">
-            <div class="btn-group" role="group" aria-label="Time period selector">
-                <a href="{{ url_for('main.dashboard', time_period='hour') }}" class="btn btn-sm {% if current_time_period == 'hour' %}btn-primary{% else %}btn-outline-primary{% endif %}">Last Hour</a>
-                <a href="{{ url_for('main.dashboard', time_period='day') }}" class="btn btn-sm {% if current_time_period == 'day' %}btn-primary{% else %}btn-outline-primary{% endif %}">Last Day</a>
-                <a href="{{ url_for('main.dashboard', time_period='week') }}" class="btn btn-sm {% if current_time_period == 'week' %}btn-primary{% else %}btn-outline-primary{% endif %}">Last Week</a>
-                <a href="{{ url_for('main.dashboard', time_period='month') }}" class="btn btn-sm {% if current_time_period == 'month' %}btn-primary{% else %}btn-outline-primary{% endif %}">Last Month</a>
-            </div>
-        </div>
-    </div>
     <div class="col-md-6">
         <div class="card h-100">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">CPU Load History</h5>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="cpuTimeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        Last Hour
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="cpuTimeDropdown">
+                        <li><a class="dropdown-item cpu-time-option active" href="#" data-period="hour">Last Hour</a></li>
+                        <li><a class="dropdown-item cpu-time-option" href="#" data-period="day">Last Day</a></li>
+                        <li><a class="dropdown-item cpu-time-option" href="#" data-period="week">Last Week</a></li>
+                        <li><a class="dropdown-item cpu-time-option" href="#" data-period="month">Last Month</a></li>
+                    </ul>
+                </div>
             </div>
             <div class="card-body">
                 <canvas id="cpuChart" height="200"></canvas>
@@ -120,8 +121,19 @@
     </div>
     <div class="col-md-6">
         <div class="card h-100">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Memory Usage History</h5>
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="memTimeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        Last Hour
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="memTimeDropdown">
+                        <li><a class="dropdown-item mem-time-option active" href="#" data-period="hour">Last Hour</a></li>
+                        <li><a class="dropdown-item mem-time-option" href="#" data-period="day">Last Day</a></li>
+                        <li><a class="dropdown-item mem-time-option" href="#" data-period="week">Last Week</a></li>
+                        <li><a class="dropdown-item mem-time-option" href="#" data-period="month">Last Month</a></li>
+                    </ul>
+                </div>
             </div>
             <div class="card-body">
                 <canvas id="memoryChart" height="200"></canvas>
@@ -385,153 +397,160 @@
 <script src="{{ url_for('static', filename='js/vm-creation.js') }}"></script>
 <script src="{{ url_for('static', filename='lib/chart.js/chart.min.js') }}"></script>
 <script>
-// Get chart data from the server-provided variables
-const cpuHistoryData = JSON.parse('{{ cpu_history|default([])|tojson|safe }}');
-const memHistoryData = JSON.parse('{{ memory_history|default([])|tojson|safe }}');
-const historyTimestamps = JSON.parse('{{ history_timestamps|default([])|tojson|safe }}');
+// Initialize chart data from server variables
+const initialCpuData = JSON.parse('{{ cpu_history|default([])|tojson|safe }}');
+const initialMemData = JSON.parse('{{ memory_history|default([])|tojson|safe }}');
+const initialTimestamps = JSON.parse('{{ history_timestamps|default([])|tojson|safe }}');
 
-// CPU Chart
-const cpuCtx = document.getElementById('cpuChart').getContext('2d');
-window.cpuChart = new Chart(cpuCtx, {
-    type: 'line',
-    data: {
-        labels: historyTimestamps,
-        datasets: [{
-            label: 'CPU Load (%)',
-            data: cpuHistoryData,
-            backgroundColor: 'rgba(54, 162, 235, 0.2)',
-            borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 2,
-            tension: 0.4
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true,
-                max: 100,
-                ticks: {
-                    callback: function(value) {
-                        return value + '%';
-                    },
-                    color: function() {
-                        return document.body.classList.contains('dark-mode') ? '#9999a8' : undefined;
-                    }
-                },
-                grid: {
-                    color: function() {
-                        return document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : undefined;
-                    }
-                }
-            },
-            x: {
-                ticks: {
-                    color: function() {
-                        return document.body.classList.contains('dark-mode') ? '#9999a8' : undefined;
-                    }
-                },
-                grid: {
-                    color: function() {
-                        return document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : undefined;
-                    }
-                }
-            }
+// Track current time periods for each chart
+let cpuTimePeriod = 'hour';
+let memTimePeriod = 'hour';
+
+// Create charts with common configuration options
+function createChartConfig(data, labels, datasetLabel, color) {
+    return {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: datasetLabel,
+                data: data,
+                backgroundColor: `rgba(${color}, 0.2)`,
+                borderColor: `rgba(${color}, 1)`,
+                borderWidth: 2,
+                tension: 0.4
+            }]
         },
-        plugins: {
-            legend: {
-                display: false
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        },
+                        color: function() {
+                            return document.body.classList.contains('dark-mode') ? '#9999a8' : undefined;
+                        }
+                    },
+                    grid: {
+                        color: function() {
+                            return document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : undefined;
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: function() {
+                            return document.body.classList.contains('dark-mode') ? '#9999a8' : undefined;
+                        }
+                    },
+                    grid: {
+                        color: function() {
+                            return document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : undefined;
+                        }
+                    }
+                }
             },
-            tooltip: {
-                backgroundColor: function() {
-                    return document.body.classList.contains('dark-mode') ? 'rgba(42, 42, 60, 0.8)' : undefined;
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: function() {
+                        return document.body.classList.contains('dark-mode') ? 'rgba(42, 42, 60, 0.8)' : undefined;
+                    }
                 }
             }
         }
-    }
-});
-
-// Memory Chart
-const memCtx = document.getElementById('memoryChart').getContext('2d');
-window.memChart = new Chart(memCtx, {
-    type: 'line',
-    data: {
-        labels: historyTimestamps,
-        datasets: [{
-            label: 'Memory Usage (%)',
-            data: memHistoryData,
-            backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            borderColor: 'rgba(75, 192, 192, 1)',
-            borderWidth: 2,
-            tension: 0.4
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true,
-                max: 100,
-                ticks: {
-                    callback: function(value) {
-                        return value + '%';
-                    },
-                    color: function() {
-                        return document.body.classList.contains('dark-mode') ? '#9999a8' : undefined;
-                    }
-                },
-                grid: {
-                    color: function() {
-                        return document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : undefined;
-                    }
-                }
-            },
-            x: {
-                ticks: {
-                    color: function() {
-                        return document.body.classList.contains('dark-mode') ? '#9999a8' : undefined;
-                    }
-                },
-                grid: {
-                    color: function() {
-                        return document.body.classList.contains('dark-mode') ? 'rgba(255, 255, 255, 0.1)' : undefined;
-                    }
-                }
-            }
-        },
-        plugins: {
-            legend: {
-                display: false
-            },
-            tooltip: {
-                backgroundColor: function() {
-                    return document.body.classList.contains('dark-mode') ? 'rgba(42, 42, 60, 0.8)' : undefined;
-                }
-            }
-        }
-    }
-});
-
-// Get the current time period from the URL
-function getCurrentTimePeriod() {
-    const urlParams = new URLSearchParams(window.location.search);
-    let period = urlParams.get('time_period');
-    
-    // Default to 'hour' if not specified or invalid
-    if (!period || !['hour', 'day', 'week', 'month'].includes(period)) {
-        period = 'hour';
-    }
-    
-    return period;
+    };
 }
 
-// Refresh dashboard data every 30 seconds
+// Initialize charts
+const cpuCtx = document.getElementById('cpuChart').getContext('2d');
+window.cpuChart = new Chart(cpuCtx, createChartConfig(initialCpuData, initialTimestamps, 'CPU Load (%)', '54, 162, 235'));
+
+const memCtx = document.getElementById('memoryChart').getContext('2d');
+window.memChart = new Chart(memCtx, createChartConfig(initialMemData, initialTimestamps, 'Memory Usage (%)', '75, 192, 192'));
+
+// Function to fetch chart data for a specific chart and time period
+function fetchChartData(chartType, period, callback) {
+    fetch(`/api/cluster-stats?chart_type=${chartType}&time_period=${period}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                callback(data);
+            }
+        })
+        .catch(error => {
+            console.error(`Error fetching ${chartType} data:`, error);
+        });
+}
+
+// Update a chart with new data
+function updateChart(chart, data, timestamps) {
+    chart.data.datasets[0].data = data;
+    chart.data.labels = timestamps;
+    chart.update();
+}
+
+// Handle time period selection for CPU chart
+document.querySelectorAll('.cpu-time-option').forEach(option => {
+    option.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Get selected period
+        const period = this.dataset.period;
+        cpuTimePeriod = period;
+        
+        // Update dropdown text
+        document.getElementById('cpuTimeDropdown').textContent = this.textContent;
+        
+        // Update active state
+        document.querySelectorAll('.cpu-time-option').forEach(opt => {
+            opt.classList.remove('active');
+        });
+        this.classList.add('active');
+        
+        // Fetch and update chart data
+        fetchChartData('cpu', period, function(data) {
+            updateChart(cpuChart, data.cpu_history, data.history_timestamps);
+        });
+    });
+});
+
+// Handle time period selection for Memory chart
+document.querySelectorAll('.mem-time-option').forEach(option => {
+    option.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Get selected period
+        const period = this.dataset.period;
+        memTimePeriod = period;
+        
+        // Update dropdown text
+        document.getElementById('memTimeDropdown').textContent = this.textContent;
+        
+        // Update active state
+        document.querySelectorAll('.mem-time-option').forEach(opt => {
+            opt.classList.remove('active');
+        });
+        this.classList.add('active');
+        
+        // Fetch and update chart data
+        fetchChartData('memory', period, function(data) {
+            updateChart(memChart, data.memory_history, data.history_timestamps);
+        });
+    });
+});
+
+// Refresh dashboard data at regular intervals
 function refreshDashboardData() {
-    const timePeriod = getCurrentTimePeriod();
-    
-    fetch('/api/cluster-stats?time_period=' + timePeriod)
+    // Fetch general stats
+    fetch('/api/cluster-stats')
         .then(response => response.json())
         .then(data => {
             if (data.success) {
@@ -541,28 +560,8 @@ function refreshDashboardData() {
                 document.getElementById('total-nodes').textContent = data.node_count;
                 document.getElementById('online-nodes').textContent = data.online_node_count;
                 
-                // Update charts
-                cpuChart.data.datasets[0].data = data.cpu_history;
-                cpuChart.data.labels = data.history_timestamps;
-                cpuChart.update();
-                
-                memChart.data.datasets[0].data = data.memory_history;
-                memChart.data.labels = data.history_timestamps;
-                memChart.update();
-                
-                // Adjust refresh interval based on time period
-                let refreshInterval = 30000; // 30 seconds default for 'hour'
-                
-                if (data.time_period === 'day') {
-                    refreshInterval = 60000; // 1 minute
-                } else if (data.time_period === 'week') {
-                    refreshInterval = 300000; // 5 minutes
-                } else if (data.time_period === 'month') {
-                    refreshInterval = 600000; // 10 minutes
-                }
-                
                 // Schedule next refresh
-                setTimeout(refreshDashboardData, refreshInterval);
+                setTimeout(refreshDashboardData, 30000);
             }
         })
         .catch(error => {
@@ -570,10 +569,19 @@ function refreshDashboardData() {
             // Try again after a minute
             setTimeout(refreshDashboardData, 60000);
         });
+    
+    // Fetch data for CPU chart
+    fetchChartData('cpu', cpuTimePeriod, function(data) {
+        updateChart(cpuChart, data.cpu_history, data.history_timestamps);
+    });
+    
+    // Fetch data for Memory chart
+    fetchChartData('memory', memTimePeriod, function(data) {
+        updateChart(memChart, data.memory_history, data.history_timestamps);
+    });
 }
 
-// Start the refresh cycle with appropriate interval based on time period
-const initialRefreshDelay = getCurrentTimePeriod() === 'hour' ? 30000 : 60000;
-setTimeout(refreshDashboardData, initialRefreshDelay);
+// Start the refresh cycle
+setTimeout(refreshDashboardData, 30000);
 </script>
 {% endblock %}
