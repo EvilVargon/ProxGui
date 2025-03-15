@@ -111,6 +111,8 @@
                         <li><a class="dropdown-item cpu-time-option" href="#" data-period="day">Last Day</a></li>
                         <li><a class="dropdown-item cpu-time-option" href="#" data-period="week">Last Week</a></li>
                         <li><a class="dropdown-item cpu-time-option" href="#" data-period="month">Last Month</a></li>
+                        <li><a class="dropdown-item cpu-time-option" href="#" data-period="year">Last Year</a></li>
+                        <li><a class="dropdown-item cpu-time-option" href="#" data-period="fiveyear">Last 5 Years</a></li>
                     </ul>
                 </div>
             </div>
@@ -132,6 +134,8 @@
                         <li><a class="dropdown-item mem-time-option" href="#" data-period="day">Last Day</a></li>
                         <li><a class="dropdown-item mem-time-option" href="#" data-period="week">Last Week</a></li>
                         <li><a class="dropdown-item mem-time-option" href="#" data-period="month">Last Month</a></li>
+                        <li><a class="dropdown-item mem-time-option" href="#" data-period="year">Last Year</a></li>
+                        <li><a class="dropdown-item mem-time-option" href="#" data-period="fiveyear">Last 5 Years</a></li>
                     </ul>
                 </div>
             </div>
@@ -478,9 +482,16 @@ window.memChart = new Chart(memCtx, createChartConfig(initialMemData, initialTim
 
 // Function to fetch chart data for a specific chart and time period
 function fetchChartData(chartType, period, callback) {
+    console.log(`Fetching ${chartType} data for period: ${period}`);
     fetch(`/api/cluster-stats?chart_type=${chartType}&time_period=${period}`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log(`Received ${chartType} data for period: ${period}`, data);
             if (data.success) {
                 callback(data);
             }

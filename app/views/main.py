@@ -25,6 +25,8 @@ HOUR_BUCKET = 5 * 60  # 5 minutes in seconds
 DAY_BUCKET = 30 * 60   # 30 minutes in seconds
 WEEK_BUCKET = 3 * 3600  # 3 hours in seconds
 MONTH_BUCKET = 12 * 3600  # 12 hours in seconds
+YEAR_BUCKET = 24 * 3600  # 1 day in seconds
+FIVE_YEAR_BUCKET = 7 * 24 * 3600  # 1 week in seconds
 
 # Initialize history storage structure
 history = {
@@ -56,6 +58,20 @@ history = {
         'memory': [],
         'timestamps': []
     },
+    'year': {
+        'resolution': YEAR_BUCKET,
+        'datapoints': 36,  # Past year: 36 points at 10-day intervals (approximately)
+        'cpu': [],
+        'memory': [],
+        'timestamps': []
+    },
+    'fiveyear': {
+        'resolution': FIVE_YEAR_BUCKET,
+        'datapoints': 30,  # Past 5 years: 30 points at 2-month intervals (approximately)
+        'cpu': [],
+        'memory': [],
+        'timestamps': []
+    },
     'last_update': 0
 }
 
@@ -64,7 +80,7 @@ def init_history_data():
     global history
     
     # Create default empty data structures if needed
-    for period in ['hour', 'day', 'week', 'month']:
+    for period in ['hour', 'day', 'week', 'month', 'year', 'fiveyear']:
         if not history[period]['cpu']:
             history[period]['cpu'] = [0] * history[period]['datapoints']
         if not history[period]['memory']:
@@ -117,8 +133,12 @@ def get_formatted_timestamp(dt, period):
         return dt.strftime('%H:%M')
     elif period == 'week':
         return dt.strftime('%a %H:%M')  # Day of week + time
-    else:  # month
+    elif period == 'month':
         return dt.strftime('%m-%d %H:%M')  # Month-day + time
+    elif period == 'year':
+        return dt.strftime('%b %d')  # Month name and day
+    else:  # fiveyear
+        return dt.strftime('%Y-%m')  # Year and month
 
 def update_history_data():
     """Update all historical data at appropriate intervals"""
@@ -149,7 +169,7 @@ def update_history_data():
             now = datetime.datetime.now()
             
             # Update data for each time period
-            for period in ['hour', 'day', 'week', 'month']:
+            for period in ['hour', 'day', 'week', 'month', 'year', 'fiveyear']:
                 # Check if this period should be updated based on its resolution
                 period_resolution = history[period]['resolution']
                 if current_time - last_update >= period_resolution or last_update == 0:
