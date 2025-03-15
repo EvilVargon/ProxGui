@@ -389,7 +389,7 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/vm-creation.js') }}"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+<script src="{{ url_for('static', filename='lib/chart.js/chart.min.js') }}"></script>
 <script>
 // Get chart data from the server-provided variables
 const cpuHistoryData = JSON.parse('{{ cpu_history|default([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])|tojson|safe }}');

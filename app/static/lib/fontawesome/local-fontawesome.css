@@ -1,0 +1,70 @@
+/* Simplified FontAwesome CSS with local paths */
+@font-face {
+  font-family: 'FontAwesome';
+  font-style: normal;
+  font-weight: 900;
+  src: url("webfonts/fa-solid-900.woff2") format("woff2"),
+       url("webfonts/fa-solid-900.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: 'FontAwesome';
+  font-style: normal;
+  font-weight: 400;
+  src: url("webfonts/fa-regular-400.woff2") format("woff2"),
+       url("webfonts/fa-regular-400.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: 'FontAwesome Brands';
+  font-style: normal;
+  font-weight: 400;
+  src: url("webfonts/fa-brands-400.woff2") format("woff2"),
+       url("webfonts/fa-brands-400.ttf") format("truetype");
+}
+
+.fas,
+.fa-solid {
+  font-family: 'FontAwesome';
+  font-weight: 900;
+}
+
+.far,
+.fa-regular {
+  font-family: 'FontAwesome';
+  font-weight: 400;
+}
+
+.fab,
+.fa-brands {
+  font-family: 'FontAwesome Brands';
+  font-weight: 400;
+}
+
+/* Common base styles for all icons */
+.fas, .far, .fab {
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  display: inline-block;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  line-height: 1;
+}
+
+/* Key icons used in the application */
+.fa-folder:before { content: "\f07b"; }
+.fa-folder-plus:before { content: "\f65e"; }
+.fa-moon:before { content: "\f186"; }
+.fa-sun:before { content: "\f185"; }
+.fa-caret-down:before { content: "\f0d7"; }
+.fa-caret-right:before { content: "\f0da"; }
+.fa-plus:before { content: "\f067"; }
+.fa-play:before { content: "\f04b"; }
+.fa-stop:before { content: "\f04d"; }
+.fa-sync-alt:before { content: "\f2f1"; }
+.fa-camera:before { content: "\f030"; }
+.fa-info-circle:before { content: "\f05a"; }
+.fa-external-link-alt:before { content: "\f35d"; }
+.fa-circle:before { content: "\f111"; }
+.fa-th-large:before { content: "\f009"; }

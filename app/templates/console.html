@@ -3,6 +3,7 @@
 {% block title %}VM Console - Proxmox User Portal{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='lib/novnc/novnc.min.css') }}">
 <style>
     .console-container {
         width: 100%;
@@ -76,11 +77,11 @@
     </div>
 </div>
 
-<!-- Note: In a real implementation, you would include the noVNC client library -->
-<!-- This is just a placeholder template to show the layout -->
+<!-- Note: Now using local noVNC library instead of CDN -->
 {% endblock %}
 
 {% block extra_js %}
+<script src="{{ url_for('static', filename='lib/novnc/novnc.min.js') }}"></script>
 <script>
     document.getElementById('connectBtn').addEventListener('click', function() {
         this.disabled = true;
