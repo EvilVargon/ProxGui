@@ -371,6 +371,207 @@ def get_cluster_stats():
             'error': str(e)
         }), 500
 
+@bp.route('/vm/<node>/<vmid>')
+def vm_details(node, vmid):
+    if 'user' not in session:
+        return redirect(url_for('auth.login'))
+    
+    vmtype = request.args.get('type', 'qemu')
+    user = session['user']
+    
+    try:
+        # Get VMs for sidebar
+        vms = get_user_vms(user['username'], user['groups'])
+        
+        # Get VM folder tree
+        folder_structure = folder_manager.get_folder_structure()
+        vm_folder_tree = folder_manager.build_folder_html(folder_structure, folder_structure[1], vms)
+        
+        # Get VM status and details
+        vm_status = get_vm_status(node, vmid, vmtype)
+        snapshots = get_snapshots(node, vmid, vmtype)
+        
+        return render_template(
+            'vm_details.html',
+            user=user,
+            vm_status=vm_status,
+            snapshots=snapshots,
+            node=node,
+            vmid=vmid,
+            vmtype=vmtype,
+            vm_folder_tree=vm_folder_tree
+        )
+    except Exception as e:
+        flash(f"Error retrieving VM details: {str(e)}", "error")
+        return redirect(url_for('main.dashboard'))
+
+@bp.route('/console/<node>/<vmid>')
+def console(node, vmid):
+    if 'user' not in session:
+        return redirect(url_for('auth.login'))
+    
+    vmtype = request.args.get('type', 'qemu')
+    user = session['user']
+    
+    # For console pages, we hide the sidebar
+    return render_template(
+        'console.html',
+        user=user,
+        node=node,
+        vmid=vmid,
+        vmtype=vmtype,
+        hide_sidebar=True  # Hide sidebar for console view
+    )
+
+# API routes for AJAX calls
+@bp.route('/api/vm/<node>/<vmid>/start', methods=['POST'])
+def api_start_vm(node, vmid):
+    if 'user' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    vmtype = request.args.get('type', 'qemu')
+    
+    result = start_vm(node, vmid, vmtype)
+    if result is not None:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Failed to start VM'}), 500
+
+@bp.route('/api/vm/<node>/<vmid>/stop', methods=['POST'])
+def api_stop_vm(node, vmid):
+    if 'user' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    vmtype = request.args.get('type', 'qemu')
+    
+    result = stop_vm(node, vmid, vmtype)
+    if result is not None:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Failed to stop VM'}), 500
+
+@bp.route('/api/vm/<node>/<vmid>/snapshot', methods=['POST'])
+def api_create_snapshot(node, vmid):
+    if 'user' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    vmtype = request.args.get('type', 'qemu')
+    name = request.form.get('name')
+    description = request.form.get('description')
+    
+    if not name:
+        return jsonify({'error': 'Snapshot name is required'}), 400
+    
+    result = create_snapshot(node, vmid, name, description, vmtype)
+    if result is not None:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Failed to create snapshot'}), 500
+    
+@bp.route('/test-connection')
+def test_connection():
+    """Test connection to Proxmox API"""
+    if 'user' not in session:
+        return redirect(url_for('auth.login'))
+    
+    from app.proxmox.api import get_api
+    import traceback
+    
+    try:
+        api = get_api()
+        # Try to get a simple endpoint
+        version = api.get_request("version")
+        
+        if version:
+            return f"""
+            <h1>Connection successful!</h1>
+            <pre>{version}</pre>
+            <p><a href="{url_for('main.dashboard')}">Return to dashboard</a></p>
+            """
+        else:
+            return f"""
+            <h1>Connection failed!</h1>
+            <p>Unable to get version information from Proxmox API.</p>
+            <p>Check that your credentials and server information are correct.</p>
+            <p><a href="{url_for('main.dashboard')}">Return to dashboard</a></p>
+            """
+    except Exception as e:
+        error_details = traceback.format_exc()
+        return f"""
+        <h1>Connection error!</h1>
+        <p>Exception: {str(e)}</p>
+        <pre>{error_details}</pre>
+        <p><a href="{url_for('main.dashboard')}">Return to dashboard</a></p>
+        """
+
+@bp.route('/api/vm/<node>/<vmid>/vncproxy', methods=['POST'])
+def vm_vncproxy(node, vmid):
+    """Get a VNC proxy ticket for a VM"""
+    if 'user' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    vmtype = request.args.get('type', 'qemu')
+    
+    try:
+        api = get_api()
+        
+        if vmtype == 'qemu':
+            endpoint = f"nodes/{node}/qemu/{vmid}/vncproxy"
+        else:  # LXC container
+            endpoint = f"nodes/{node}/lxc/{vmid}/vncproxy"
+        
+        # Enable console if needed
+        vnc_info = api.post_request(endpoint, {})
+        
+        if vnc_info:
+            return jsonify({
+                'success': True,
+                'data': vnc_info
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to get VNC proxy'
+            }), 500
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@bp.route('/api/vm/<node>/<vmid>/vnc', methods=['GET'])
+def vm_vnc_websocket(node, vmid):
+    """WebSocket proxy for VNC connection"""
+    if 'user' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    token = request.args.get('token')
+    if not token:
+        return jsonify({'error': 'No token provided'}), 400
+    
+    # This is a placeholder. In a production environment, you'd need to implement
+    # a proper WebSocket proxy that connects to the Proxmox VNC server.
+    # For a complete implementation, you'd need to use a library like websockify
+    # or implement a custom WebSocket server.
+    
+    return jsonify({
+        'success': False,
+        'error': 'WebSocket proxy not implemented'
+    }), 501
+
+@bp.route('/api/vm/<node>/<vmid>/reboot', methods=['POST'])
+def api_reboot_vm(node, vmid):
+    if 'user' not in session:
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    vmtype = request.args.get('type', 'qemu')
+    
+    result = reboot_vm(node, vmid, vmtype)
+    if result is not None:
+        return jsonify({'success': True})
+    else:
+        return jsonify({'error': 'Failed to reboot VM'}), 500
+
 # Initialize history data when module is loaded
 init_history_data()
 
