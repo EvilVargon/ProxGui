@@ -191,7 +191,10 @@
                                         <span class="small">{{ node.mem_percent }}% ({{ node.mem_used }} / {{ node.mem_total }} GB)</span>
                                     </td>
                                     <td>{{ node.uptime_formatted }}</td>
-                                    <td>{{ node.vm_count }}</td>
+                                    <td>
+                                        <span class="text-success"><i class="fas fa-circle fa-xs"></i> {{ vms|selectattr('node', 'equalto', node.node)|selectattr('status', 'equalto', 'running')|list|length }}</span> 
+                                        <span class="text-secondary"><i class="fas fa-circle fa-xs"></i> {{ node.vm_count }}</span>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                             {% else %}

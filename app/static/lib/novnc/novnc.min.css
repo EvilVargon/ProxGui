@@ -1,0 +1,24 @@
+.noVNC_canvas {
+    cursor: none;
+    outline: none;
+}
+
+.noVNC_status_bar {
+    background-color: #333;
+    color: #fff;
+    padding: 8px;
+    text-align: center;
+    font-family: sans-serif;
+}
+
+.noVNC_status_error {
+    background-color: #d9534f;
+}
+
+.noVNC_status_warn {
+    background-color: #f0ad4e;
+}
+
+.noVNC_status_normal {
+    background-color: #5cb85c;
+}

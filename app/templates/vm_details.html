@@ -523,7 +523,8 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='lib/novnc/novnc.min.js') }}"></script>
+<!-- Load NoVNC scripts directly -->
+<script src="{{ url_for('static', filename='lib/novnc/rfb.js') }}"></script>
 <script>
     // VM Control Functions
     document.getElementById('startBtn')?.addEventListener('click', function() {

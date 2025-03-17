@@ -25,6 +25,8 @@
         border-radius: 5px;
     }
 </style>
+<!-- Load NoVNC scripts in the head section to ensure they're available -->
+<script src="{{ url_for('static', filename='lib/novnc/rfb.js') }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -77,36 +79,162 @@
     </div>
 </div>
 
-<!-- Note: Now using local noVNC library instead of CDN -->
+<!-- Note: Using properly loaded NoVNC library -->
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='lib/novnc/novnc.min.js') }}"></script>
+<!-- Debug script for NoVNC -->
 <script>
+// Debug logger
+function consoleDebug(...args) {
+    console.log("[VNC Console Debug]", ...args);
+    
+    // Also update status bar if it exists
+    const statusEl = document.getElementById('noVNC_status');
+    if (statusEl) {
+        statusEl.textContent = args.join(' ');
+    }
+}
+
+// Log page load and verify RFB is available
+consoleDebug("Console page loaded");
+consoleDebug("RFB availability check:", typeof RFB);
+
+// Initialize immediately
+document.addEventListener('DOMContentLoaded', function() {
+    consoleDebug("DOM Content Loaded");
+    
+    // Initialize noVNC
+    let rfb = null;
+    
+    // Verify RFB is defined
+    if (typeof RFB !== 'function') {
+        consoleDebug("ERROR: RFB is not properly defined - actual type is:", typeof RFB);
+        document.getElementById('noVNC_status').textContent = 'Error: NoVNC library not properly loaded';
+        return;
+    } else {
+        consoleDebug("RFB is properly defined as a", typeof RFB);
+    }
+    
+    function connectToVNC() {
+        const node = '{{ node }}';
+        const vmid = '{{ vmid }}';
+        const type = '{{ vmtype }}';
+        
+        consoleDebug("Connecting to VNC...");
+        document.getElementById('noVNC_status').textContent = 'Requesting VNC connection...';
+        
+        // First, request a VNC ticket from the server
+        fetch(`/api/vm/${node}/${vmid}/vncproxy?type=${type}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                consoleDebug("Got VNC ticket:", data);
+                const vnc_info = data.data;
+                document.getElementById('noVNC_status').textContent = 'Connecting to VNC...';
+                
+                // Connect to the VNC server via our WebSocket proxy
+                const url = `ws://${window.location.hostname}:8765/api/ws/vnc?token=${vnc_info.token}&type=${type}`;
+                consoleDebug("WebSocket URL:", url);
+                
+                try {
+                    // Initialize noVNC
+                    if (typeof RFB !== 'function' && typeof RFB !== 'object') {
+                        throw new Error("RFB is not defined or not a constructor");
+                    }
+                    
+                    rfb = new RFB(document.getElementById('noVNC_canvas'), url, {
+                        credentials: {
+                            password: vnc_info.ticket
+                        }
+                    });
+                    
+                    consoleDebug("RFB instance created", rfb);
+                    
+                    rfb.addEventListener("connect", () => {
+                        document.getElementById('noVNC_status').textContent = 'Connected';
+                        document.getElementById('connectBtn').innerHTML = 'Disconnect';
+                        document.getElementById('connectBtn').className = 'btn btn-sm btn-danger';
+                        document.getElementById('connectBtn').disabled = false;
+                        consoleDebug("Connected to VNC");
+                    });
+                    
+                    rfb.addEventListener("disconnect", (e) => {
+                        document.getElementById('noVNC_status').textContent = 'Disconnected: ' + e.detail.reason;
+                        document.getElementById('connectBtn').innerHTML = 'Connect';
+                        document.getElementById('connectBtn').className = 'btn btn-sm btn-success';
+                        document.getElementById('connectBtn').disabled = false;
+                        rfb = null;
+                        consoleDebug("Disconnected", e.detail.reason);
+                    });
+                    
+                    rfb.addEventListener("credentialsrequired", () => {
+                        document.getElementById('noVNC_status').textContent = 'VNC authentication failed';
+                        document.getElementById('connectBtn').innerHTML = 'Connect';
+                        document.getElementById('connectBtn').className = 'btn btn-sm btn-success';
+                        document.getElementById('connectBtn').disabled = false;
+                        consoleDebug("VNC credentials required");
+                    });
+                } catch (error) {
+                    consoleDebug("Error creating RFB:", error);
+                    document.getElementById('noVNC_status').textContent = 'Error: ' + error.message;
+                    document.getElementById('connectBtn').innerHTML = 'Connect';
+                    document.getElementById('connectBtn').disabled = false;
+                }
+            } else {
+                document.getElementById('noVNC_status').textContent = 'Failed to get VNC proxy: ' + (data.error || 'Unknown error');
+                document.getElementById('connectBtn').innerHTML = 'Connect';
+                document.getElementById('connectBtn').disabled = false;
+                consoleDebug("Failed to get VNC proxy:", data.error);
+            }
+        })
+        .catch(error => {
+            document.getElementById('noVNC_status').textContent = 'Error connecting to VNC: ' + error;
+            document.getElementById('connectBtn').innerHTML = 'Connect';
+            document.getElementById('connectBtn').disabled = false;
+            consoleDebug("VNC error:", error);
+        });
+    }
+    
+    // Connect button handler
     document.getElementById('connectBtn').addEventListener('click', function() {
-        this.disabled = true;
-        this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Connecting...';
-        
-        // In a real implementation, you'd connect to the noVNC websocket here
-        // This is just a placeholder
-        document.getElementById('noVNC_status').textContent = 'Connecting...';
-        
-        setTimeout(() => {
-            // Simulating connection for demo purposes
-            document.getElementById('noVNC_status').textContent = 'Connected';
-            this.innerHTML = 'Disconnect';
-            this.className = 'btn btn-sm btn-danger';
-            this.disabled = false;
-        }, 2000);
+        consoleDebug("Connect button clicked");
+        if (rfb) {
+            // If already connected, disconnect
+            rfb.disconnect();
+            document.getElementById('noVNC_status').textContent = 'Disconnected by user';
+            this.innerHTML = 'Connect';
+            this.className = 'btn btn-sm btn-success';
+        } else {
+            // Connect to VNC
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Connecting...';
+            connectToVNC();
+        }
     });
     
+    // Auto-connect if VM is running
+    setTimeout(function() {
+        consoleDebug("Auto-connecting");
+        // Auto-connect when page loads (with a small delay)
+        document.getElementById('connectBtn').click();
+    }, 1000);
+    
+    // Send Ctrl+Alt+Del to the VM
     document.getElementById('ctrlAltDelBtn').addEventListener('click', function() {
-        // In a real implementation, you'd send Ctrl+Alt+Del to the noVNC client
-        alert('Sending Ctrl+Alt+Del');
+        consoleDebug("Ctrl+Alt+Del button clicked");
+        if (rfb) {
+            rfb.sendCtrlAltDel();
+        } else {
+            alert('Not connected to VNC. Please connect first.');
+        }
     });
     
+    // Toggle fullscreen mode
     document.getElementById('fullscreenBtn').addEventListener('click', function() {
-        // In a real implementation, you'd toggle fullscreen mode
+        consoleDebug("Fullscreen button clicked");
         const container = document.getElementById('console-container');
         
         if (document.fullscreenElement) {
@@ -115,5 +243,14 @@
             container.requestFullscreen();
         }
     });
+    
+    // Handle resize events to keep the canvas properly sized
+    window.addEventListener('resize', function() {
+        consoleDebug("Window resized");
+        if (rfb) {
+            rfb.resizeSession();
+        }
+    });
+});
 </script>
 {% endblock %}

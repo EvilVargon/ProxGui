@@ -2,7 +2,8 @@ from flask import Blueprint, render_template, session, redirect, url_for, flash,
 from app.proxmox.api import (
     get_user_vms, get_vm_status, start_vm, stop_vm, 
     create_snapshot, get_snapshots, get_cluster_info,
-    get_node_status, get_storage_status, get_cluster_resources
+    get_node_status, get_storage_status, get_cluster_resources,
+    reboot_vm, get_api
 )
 from app.models.folder import FolderManager
 import datetime
@@ -504,29 +505,60 @@ def test_connection():
         <p><a href="{url_for('main.dashboard')}">Return to dashboard</a></p>
         """
 
+# This duplicate function has been removed
+
+from flask import current_app  # Add missing import
+
 @bp.route('/api/vm/<node>/<vmid>/vncproxy', methods=['POST'])
 def vm_vncproxy(node, vmid):
-    """Get a VNC proxy ticket for a VM"""
+    """Get a VNC proxy ticket for a VM and create a proxy token"""
     if 'user' not in session:
         return jsonify({'error': 'Not authenticated'}), 401
     
     vmtype = request.args.get('type', 'qemu')
     
     try:
+        from app.proxmox.websocket import generate_token, store_vnc_connection
+        
+        # Get Proxmox API instance
         api = get_api()
         
+        # Determine endpoint based on VM type
         if vmtype == 'qemu':
             endpoint = f"nodes/{node}/qemu/{vmid}/vncproxy"
         else:  # LXC container
             endpoint = f"nodes/{node}/lxc/{vmid}/vncproxy"
         
-        # Enable console if needed
+        # Get VNC proxy ticket from Proxmox
         vnc_info = api.post_request(endpoint, {})
         
         if vnc_info:
+            # Generate a token for the WebSocket connection
+            token = generate_token()
+            
+            # Store the VNC connection details with our token
+            store_vnc_connection(
+                token=token,
+                vnc_info={
+                    'node': node,
+                    'vmid': vmid,
+                    'vmtype': vmtype,
+                    'ticket': vnc_info['ticket']
+                },
+                host=api.host,
+                port=api.port,
+                verify_ssl=api.verify_ssl
+            )
+            
+            # Return the token to the client
             return jsonify({
                 'success': True,
-                'data': vnc_info
+                'data': {
+                    'token': token,
+                    'ticket': vnc_info['ticket'],
+                    'port': vnc_info.get('port', 0),
+                    'upid': vnc_info.get('upid', '')
+                }
             })
         else:
             return jsonify({
@@ -534,30 +566,26 @@ def vm_vncproxy(node, vmid):
                 'error': 'Failed to get VNC proxy'
             }), 500
     except Exception as e:
+        import traceback
+        print(f"VNC proxy error: {str(e)}")  # Fallback to print for debugging
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
 
-@bp.route('/api/vm/<node>/<vmid>/vnc', methods=['GET'])
-def vm_vnc_websocket(node, vmid):
-    """WebSocket proxy for VNC connection"""
-    if 'user' not in session:
-        return jsonify({'error': 'Not authenticated'}), 401
-    
-    token = request.args.get('token')
-    if not token:
-        return jsonify({'error': 'No token provided'}), 400
-    
-    # This is a placeholder. In a production environment, you'd need to implement
-    # a proper WebSocket proxy that connects to the Proxmox VNC server.
-    # For a complete implementation, you'd need to use a library like websockify
-    # or implement a custom WebSocket server.
-    
+# WebSocket route for VNC connections
+from flask import request as flask_request
+@bp.route('/api/ws/vnc')
+def vm_vnc_websocket():
+    """WebSocket endpoint for VNC connections"""
+    # This route is special - it will be handled by the WebSocket server
+    # Flask itself doesn't handle WebSockets, so we'll just return an error
+    # The actual WebSocket handling is done by a separate server
     return jsonify({
-        'success': False,
-        'error': 'WebSocket proxy not implemented'
-    }), 501
+        'success': False, 
+        'error': 'WebSocket connections must use the ws:// or wss:// protocol'
+    }), 400
 
 @bp.route('/api/vm/<node>/<vmid>/reboot', methods=['POST'])
 def api_reboot_vm(node, vmid):

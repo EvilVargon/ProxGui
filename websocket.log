@@ -1,0 +1,34 @@
+2025-03-15 01:00:32,923 [INFO] server listening on 0.0.0.0:8765
+2025-03-15 01:00:32,923 [INFO] WebSocket server running on 0.0.0.0:8765
+2025-03-15 01:02:44,895 [ERROR] WebSocket server error: [Errno 98] error while attempting to bind on address ('0.0.0.0', 8765): address already in use
+2025-03-15 01:02:44,895 [ERROR] [Errno 98] error while attempting to bind on address ('0.0.0.0', 8765): address already in use
+Traceback (most recent call last):
+  File "/home/jonat/code/ProxGui/run_websocket.py", line 54, in <module>
+    asyncio.run(main())
+  File "/home/jonat/.pyenv/versions/3.10.15/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/home/jonat/.pyenv/versions/3.10.15/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/jonat/code/ProxGui/run_websocket.py", line 44, in main
+    async with websockets.serve(handle_websocket, host, port):
+  File "/home/jonat/code/ProxGui/venv/lib/python3.10/site-packages/websockets/asyncio/server.py", line 813, in __aenter__
+    return await self
+  File "/home/jonat/code/ProxGui/venv/lib/python3.10/site-packages/websockets/asyncio/server.py", line 831, in __await_impl__
+    server = await self.create_server
+  File "/home/jonat/.pyenv/versions/3.10.15/lib/python3.10/asyncio/base_events.py", line 1519, in create_server
+    raise OSError(err.errno, 'error while attempting '
+OSError: [Errno 98] error while attempting to bind on address ('0.0.0.0', 8765): address already in use
+2025-03-15 01:02:58,364 [INFO] server closing
+2025-03-15 01:02:58,365 [INFO] server closed
+2025-03-15 01:02:58,365 [INFO] WebSocket server stopped by user
+2025-03-15 01:03:06,654 [INFO] server listening on 0.0.0.0:8765
+2025-03-15 01:03:06,654 [INFO] WebSocket server running on 0.0.0.0:8765
+2025-03-15 01:05:12,184 [INFO] server listening on 0.0.0.0:8765
+2025-03-15 01:05:12,184 [INFO] WebSocket server running on 0.0.0.0:8765
+2025-03-15 01:06:36,318 [INFO] server listening on 0.0.0.0:8765
+2025-03-15 01:06:36,318 [INFO] WebSocket server running on 0.0.0.0:8765
+2025-03-15 01:13:41,665 [INFO] server closing
+2025-03-15 01:13:41,665 [INFO] server closed
+2025-03-15 01:13:41,665 [INFO] WebSocket server stopped by user
+2025-03-15 01:13:48,713 [INFO] server listening on 0.0.0.0:8765
+2025-03-15 01:13:48,714 [INFO] WebSocket server running on 0.0.0.0:8765
