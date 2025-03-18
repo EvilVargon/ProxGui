@@ -1,3 +1,4 @@
+from flask import render_template_string
 from flask import Blueprint, render_template, session, redirect, url_for, flash, request, jsonify
 from app.proxmox.api import (
     get_user_vms, get_vm_status, start_vm, stop_vm, 
@@ -518,7 +519,9 @@ def vm_vncproxy(node, vmid):
     vmtype = request.args.get('type', 'qemu')
     
     try:
-        from app.proxmox.websocket import generate_token, store_vnc_connection
+        # Import token storage
+        from app.proxmox.token_store import save_token
+        from app.proxmox.websocket import generate_token
         
         # Get Proxmox API instance
         api = get_api()
@@ -536,19 +539,15 @@ def vm_vncproxy(node, vmid):
             # Generate a token for the WebSocket connection
             token = generate_token()
             
-            # Store the VNC connection details with our token
-            store_vnc_connection(
-                token=token,
-                vnc_info={
-                    'node': node,
-                    'vmid': vmid,
-                    'vmtype': vmtype,
-                    'ticket': vnc_info['ticket']
-                },
-                host=api.host,
-                port=api.port,
-                verify_ssl=api.verify_ssl
-            )
+            # Save token to shared file
+            save_token(token, {
+                'ticket': vnc_info['ticket'],
+                'node': node,
+                'vmid': vmid,
+                'vmtype': vmtype,
+                'host': api.host,
+                'port': api.port
+            })
             
             # Return the token to the client
             return jsonify({
@@ -567,12 +566,94 @@ def vm_vncproxy(node, vmid):
             }), 500
     except Exception as e:
         import traceback
-        print(f"VNC proxy error: {str(e)}")  # Fallback to print for debugging
         traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
+
+@bp.route('/api/debug/websocket-test')
+def websocket_test():
+    """Create a test token for WebSocket debugging"""
+    from app.proxmox.websocket import generate_token
+    from app.proxmox.token_store import save_token, get_token
+    import os
+    
+    token = generate_token()
+    print(f"DEBUG: Generated token {token} for WebSocket test")
+    
+    # Save the token
+    save_token(token, {
+        'ticket': 'test-ticket',
+        'node': 'test',
+        'vmid': '999',
+        'vmtype': 'qemu',
+        'host': 'localhost',
+        'port': '8006'
+    })
+    
+    # Verify the token was saved
+    token_data = get_token(token)
+    print(f"DEBUG: Token data for {token}: {token_data}")
+    
+    # Check if the token file exists
+    token_file = os.path.join(os.path.dirname(__file__), '../websocket_tokens.json')
+    print(f"DEBUG: Token file path: {token_file}")
+    print(f"DEBUG: Token file exists: {os.path.exists(token_file)}")
+    
+    if os.path.exists(token_file):
+        with open(token_file, 'r') as f:
+            print(f"DEBUG: Token file content: {f.read()}")
+    
+    # Generate WebSocket URL
+    ws_url = f"ws://{request.host.split(':')[0]}:8765/api/ws/vnc?token={token}&type=qemu"
+    
+    return jsonify({
+        'success': True,
+        'token': token,
+        'ws_url': ws_url,
+        'websocat_cmd': f"websocat -v '{ws_url}'"
+    })
+
+@bp.route('/api/debug/check-tokens')
+def debug_check_tokens():
+    """Check tokens in both systems"""
+    # Import directly to ensure we're accessing the same objects
+    from app.proxmox.websocket import connection_tokens
+    
+    return jsonify({
+        'success': True,
+        'tokens': list(connection_tokens.keys()),
+        'token_count': len(connection_tokens)
+    })
+
+@bp.route('/api/debug/create-token')
+def debug_create_token():
+    """Create a direct token for testing"""
+    from app.proxmox.websocket import generate_token, store_vnc_connection, connection_tokens
+    
+    token = generate_token()
+    store_vnc_connection(
+        token=token,
+        vnc_info={
+            'ticket': 'test-ticket-direct'
+        },
+        host='localhost',
+        port=8006,
+        verify_ssl=False
+    )
+    
+    # Return information for testing
+    return jsonify({
+        'success': True,
+        'token': token,
+        'all_tokens': list(connection_tokens.keys())
+    })
+
+@bp.route('/debug/websocket')
+def debug_websocket_page():
+    """Debug WebSocket connections"""
+    return render_template_string(open('websocket_debug.html').read())
 
 # WebSocket route for VNC connections
 from flask import request as flask_request

@@ -240,6 +240,9 @@
         <button class="btn btn-sm btn-dark" id="keyboardBtn" title="Virtual Keyboard">
             <i class="fas fa-keyboard"></i>
         </button>
+        <button class="btn btn-sm btn-success" id="connectBtn" title="Connect">
+            <i class="fas fa-plug"></i> Connect
+        </button>
         <button class="btn btn-sm btn-dark" id="disconnectBtn" title="Disconnect">
             <i class="fas fa-times"></i>
         </button>
@@ -636,6 +639,7 @@
         const type = '{{ vmtype }}';
         
         document.getElementById('statusMessage').textContent = 'Requesting VNC connection...';
+        console.log("Requesting VNC proxy:", node, vmid, type);
         
         // First, request a VNC ticket from the server
         fetch(`/api/vm/${node}/${vmid}/vncproxy?type=${type}`, {
@@ -643,61 +647,71 @@
         })
         .then(response => response.json())
         .then(data => {
+            console.log("VNC proxy response:", data);
             if (data.success) {
                 const vnc_info = data.data;
                 document.getElementById('statusMessage').textContent = 'Connecting to VNC...';
                 
-                // Connect to the VNC server
-                const url = `wss://${window.location.hostname}:${window.location.port}/api/vm/${node}/${vmid}/vnc?token=${vnc_info.ticket}`;
+                // Connect to the VNC server via WebSocket
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const url = `${wsProtocol}//${window.location.hostname}:8765/api/ws/vnc?token=${vnc_info.token}&type=${type}`;
+                console.log("Connecting to WebSocket URL:", url);
                 
-                // Initialize noVNC
-                rfb = new RFB(document.getElementById('novnc-canvas'), url, {
-                    credentials: {
-                        password: vnc_info.ticket
+                try {
+                    // Initialize noVNC
+                    if (rfb) {
+                        // If we already have an RFB object, disconnect it
+                        rfb.disconnect();
+                        rfb = null;
                     }
-                });
-                
-                rfb.addEventListener("connect", () => {
-                    document.getElementById('statusMessage').style.display = 'none';
-                    console.log("Connected to VNC");
-                });
-                
-                rfb.addEventListener("disconnect", (e) => {
-                    document.getElementById('statusMessage').textContent = 'Disconnected: ' + e.detail.reason;
-                    document.getElementById('statusMessage').style.display = 'block';
-                    console.log("Disconnected", e.detail.reason);
-                });
-                
-                rfb.addEventListener("credentialsrequired", () => {
-                    document.getElementById('statusMessage').textContent = 'VNC authentication failed';
-                    console.log("VNC credentials required");
-                });
+                    
+                    // Create new RFB object with simpler options
+                    rfb = new RFB(document.getElementById('novnc-canvas'), url);
+                    
+                    // Add event listeners
+                    rfb.addEventListener("connect", () => {
+                        console.log("Connected to VNC");
+                        document.getElementById('statusMessage').style.display = 'none';
+                        document.getElementById('connectBtn').innerHTML = '<i class="fas fa-plug"></i> Disconnect';
+                        document.getElementById('connectBtn').className = 'btn btn-sm btn-danger';
+                        document.getElementById('connectBtn').disabled = false;
+                    });
+                    
+                    rfb.addEventListener("disconnect", (e) => {
+                        console.log("Disconnected from VNC:", e.detail.reason);
+                        document.getElementById('statusMessage').textContent = 'Disconnected: ' + e.detail.reason;
+                        document.getElementById('statusMessage').style.display = 'block';
+                        document.getElementById('connectBtn').innerHTML = '<i class="fas fa-plug"></i> Connect';
+                        document.getElementById('connectBtn').className = 'btn btn-sm btn-success';
+                        document.getElementById('connectBtn').disabled = false;
+                        rfb = null;
+                    });
+                } catch (error) {
+                    console.error("Error creating RFB:", error);
+                    document.getElementById('statusMessage').textContent = 'Error: ' + error.message;
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('connectBtn').innerHTML = '<i class="fas fa-plug"></i> Connect';
+                }
             } else {
+                console.error("Failed to get VNC proxy:", data.error);
                 document.getElementById('statusMessage').textContent = 'Failed to get VNC proxy: ' + (data.error || 'Unknown error');
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('connectBtn').innerHTML = '<i class="fas fa-plug"></i> Connect';
             }
         })
         .catch(error => {
+            console.error("Error connecting to VNC:", error);
             document.getElementById('statusMessage').textContent = 'Error connecting to VNC: ' + error;
-            console.error("VNC error:", error);
+            document.getElementById('connectBtn').disabled = false;
+            document.getElementById('connectBtn').innerHTML = '<i class="fas fa-plug"></i> Connect';
         });
     }
     
-    // Initialize VNC connection if VM is running
     {% if vm_status.status == 'running' %}
-    document.addEventListener('DOMContentLoaded', function() {
-        // Wait a moment for page to fully load
-        setTimeout(connectToVNC, 500);
-    });
+    document.getElementById('statusMessage').textContent = 'Click Connect to access the console';
     {% else %}
     document.getElementById('statusMessage').textContent = 'VM is not running. Start the VM to access console.';
     {% endif %}
-    
-    // Console toolbar functions
-    document.getElementById('ctrlAltDelBtn')?.addEventListener('click', function() {
-        if (rfb) {
-            rfb.sendCtrlAltDel();
-        }
-    });
     
     document.getElementById('fullscreenBtn')?.addEventListener('click', function() {
         const container = document.getElementById('console-container');
@@ -709,6 +723,22 @@
         }
     });
     
+    document.getElementById('connectBtn')?.addEventListener('click', function() {
+        if (rfb) {
+            // If already connected, disconnect
+            rfb.disconnect();
+            document.getElementById('statusMessage').textContent = 'Disconnected by user';
+            document.getElementById('statusMessage').style.display = 'block';
+            this.innerHTML = '<i class="fas fa-plug"></i> Connect';
+            this.className = 'btn btn-sm btn-success';
+        } else {
+            // Connect to VNC
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Connecting...';
+            connectToVNC();
+        }
+    });
+
     document.getElementById('disconnectBtn')?.addEventListener('click', function() {
         if (rfb) {
             rfb.disconnect();

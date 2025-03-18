@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 """
-WebSocket handler for VNC connections
+WebSocket handler for VNC connections using simple-websocket-server
 """
-import asyncio
 import json
 import logging
 import secrets
 import time
-import websockets
-import ssl
+import threading
+import uuid
 from urllib.parse import parse_qs
+from simple_websocket_server import WebSocketServer, WebSocket
+
+# Import token storage
+from app.proxmox.token_store import get_token, cleanup_tokens
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("websocket-handler")
 
-import uuid
-
 # Store active VNC connections
 active_connections = {}
-connection_tokens = {}
 
 def generate_token():
     """
@@ -27,123 +27,159 @@ def generate_token():
     """
     return str(uuid.uuid4())
 
-def store_vnc_connection(token, vnc_info, host, port, verify_ssl=True):
-    """
-    Store VNC connection details for websocket proxy
-    """
-    connection_tokens[token] = {
-        'host': host,
-        'port': port,
-        'ticket': vnc_info.get('ticket'),
-        'vnc_info': vnc_info,
-        'created_at': time.time(),
-        'verify_ssl': verify_ssl
-    }
-    logger.info(f"Stored VNC connection with token {token}")
-    return token
-
-async def handle_websocket(websocket, path):
-    """
-    Handle WebSocket connections for VNC
-    """
-    query = parse_qs(path.split('?', 1)[1]) if '?' in path else {}
-    token = query.get('token', [None])[0]
-    vmtype = query.get('type', [None])[0]
+class VNCWebSocketHandler(WebSocket):
+    def handle(self):
+        """Handle incoming WebSocket messages"""
+        try:
+            # Forward the message (in a real implementation)
+            logger.info(f"Received message from client: {self.data[:50]}...")
+            
+            # Just acknowledge messages for now
+            self.send_message(json.dumps({
+                "type": "ack",
+                "message": "Message received"
+            }))
+            
+            # Update last activity for this connection
+            if hasattr(self, 'conn_id') and self.conn_id in active_connections:
+                active_connections[self.conn_id]['last_activity'] = time.time()
+                
+        except Exception as e:
+            logger.exception(f"Error handling message: {e}")
     
-    # Log connection details
-    client_host = websocket.remote_address[0] if hasattr(websocket, 'remote_address') else 'unknown'
-    logger.info(f"New WebSocket connection from {client_host} for path {path}")
-    
-    if token is None:
-        logger.warning(f"Client from {client_host} tried to connect without token")
-        await websocket.close(1008, "Missing token")
-        return
-    
-    # Validate token
-    if token not in connection_tokens:
-        logger.warning(f"Client from {client_host} tried to connect with invalid token")
-        await websocket.close(1008, "Invalid token")
-        return
-    
-    vnc_info = connection_tokens[token]
-    logger.info(f"Validated token for {vmtype} VM with host {vnc_info['host']}:{vnc_info['port']}")
-    
-    # Connect to the VNC server
-    try:
-        # Register this connection
-        conn_id = secrets.token_hex(16)
-        active_connections[conn_id] = {
-            'client': websocket,
-            'last_activity': time.time(),
-            'vnc_info': vnc_info,
-            'client_host': client_host
-        }
+    def connected(self):
+        """Handle new WebSocket connection"""
+        client_address = self.address[0] if hasattr(self, 'address') else 'unknown'
+        logger.info(f"New WebSocket connection from {client_address}")
         
-        # Simple heartbeat to keep connection alive
+        # Parse query parameters from path
+        path = self.request.path if hasattr(self.request, 'path') else ''
+        logger.info(f"Connection path: {path}")
+        
+        # Parse query parameters more robustly
+        try:
+            query = {}
+            if '?' in path:
+                query_string = path.split('?', 1)[1]
+                logger.info(f"Query string: {query_string}")
+                
+                parts = query_string.split('&')
+                for part in parts:
+                    if '=' in part:
+                        k, v = part.split('=', 1)
+                        query[k] = v
+                        logger.info(f"Parsed query param: {k}={v}")
+        except Exception as e:
+            logger.exception(f"Error parsing query string: {e}")
+            query = {}
+        
+        token = query.get('token', '')
+        vmtype = query.get('type', '')
+        
+        logger.info(f"Token from query: {token}")
+        
+        # Check the token file directly
+        import os
+        import json
+        
+        token_file = os.path.join(os.path.dirname(__file__), '../../websocket_tokens.json')
+        logger.info(f"Token file path: {token_file}")
+        logger.info(f"Token file exists: {os.path.exists(token_file)}")
+        
+        tokens_from_file = {}
+        if os.path.exists(token_file):
+            try:
+                with open(token_file, 'r') as f:
+                    tokens_from_file = json.load(f)
+                    logger.info(f"Loaded {len(tokens_from_file)} tokens from file")
+                    logger.info(f"Available tokens: {list(tokens_from_file.keys())}")
+            except json.JSONDecodeError:
+                logger.error(f"Error decoding token file")
+        
+        # Validate token
+        if not token:
+            logger.warning(f"Client from {client_address} tried to connect without token")
+            self.close(1008, "Missing token")
+            return
+        
+        # Look for the token in the file directly
+        token_data = None
+        if token in tokens_from_file:
+            token_data = tokens_from_file[token]
+            logger.info(f"Found token in file: {token}")
+        else:
+            # Try the API
+            token_data = get_token(token)
+            if token_data:
+                logger.info(f"Found token via API: {token}")
+        
+        if token_data:
+            # Handle the token data format
+            actual_data = token_data.get('data', {})
+            logger.info(f"Token data: {actual_data}")
+            
+            # Register this connection
+            self.conn_id = secrets.token_hex(16)
+            active_connections[self.conn_id] = {
+                'client': self,
+                'last_activity': time.time(),
+                'token_data': actual_data,
+                'client_host': client_address
+            }
+            
+            logger.info(f"Connection {self.conn_id} registered successfully")
+        else:
+            logger.warning(f"Invalid token: {token}")
+            self.close(1008, "Invalid token")
+        
+        logger.info(f"Validated token for VM with token={token}")
+    
+    def handle_close(self):
+        """Handle WebSocket connection close"""
+        client_address = self.address[0] if hasattr(self, 'address') else 'unknown'
+        logger.info(f"Connection from {client_address} closed")
+        
+        # Remove from active connections
+        if hasattr(self, 'conn_id') and self.conn_id in active_connections:
+            del active_connections[self.conn_id]
+            logger.info(f"Connection {self.conn_id} removed from active connections")
+
+# Global server instance
+server = None
+server_thread = None
+
+def start_websocket_server(host='0.0.0.0', port=8765):
+    """Start the WebSocket server in a background thread"""
+    global server, server_thread
+    
+    # Create and start the server
+    logger.info(f"Starting WebSocket server on {host}:{port}")
+    server = WebSocketServer(host, port, VNCWebSocketHandler)
+    
+    # Run server in a separate thread
+    server_thread = threading.Thread(target=server.serve_forever)
+    server_thread.daemon = True
+    server_thread.start()
+    
+    # Start a cleanup thread
+    def cleanup_thread():
         while True:
             try:
-                message = await websocket.recv()
-                # In a real implementation, you would forward this to the VNC server
-                # For now we'll just acknowledge messages
-                await websocket.send(json.dumps({
-                    "type": "ack",
-                    "message": "Message received"
-                }))
-                
-                # Update last activity
-                active_connections[conn_id]['last_activity'] = time.time()
-            except websockets.exceptions.ConnectionClosed:
-                logger.info(f"Connection from {client_host} closed")
-                break
+                cleanup_tokens()
+                time.sleep(60)  # Run every minute
             except Exception as e:
-                logger.exception(f"Error handling websocket message: {e}")
-                break
-    except Exception as e:
-        logger.exception(f"Error handling websocket: {e}")
-    finally:
-        # Clean up connection
-        if conn_id in active_connections:
-            del active_connections[conn_id]
-        logger.info(f"Connection from {client_host} closed, removed from active connections")
+                logger.exception(f"Error in cleanup thread: {e}")
+    
+    cleanup = threading.Thread(target=cleanup_thread)
+    cleanup.daemon = True
+    cleanup.start()
+    
+    return server
 
-def register_vnc_connection(token, host, port, ticket):
-    """
-    Register a new VNC connection
-    """
-    connection_tokens[token] = {
-        'host': host,
-        'port': port,
-        'ticket': ticket,
-        'created_at': time.time()
-    }
-    logger.info(f"Registered new VNC connection to {host}:{port} with token {token}")
-    return token
-
-def clean_old_connections():
-    """
-    Clean up expired connections
-    """
-    current_time = time.time()
-    expired_tokens = []
-    
-    # Find expired tokens (older than 5 minutes)
-    for token, info in connection_tokens.items():
-        if current_time - info['created_at'] > 300:  # 5 minutes
-            expired_tokens.append(token)
-    
-    # Remove expired tokens
-    for token in expired_tokens:
-        if token in connection_tokens:
-            del connection_tokens[token]
-    
-    # Find and close inactive connections (no activity for 5 minutes)
-    inactive_connections = []
-    for conn_id, conn_info in active_connections.items():
-        if current_time - conn_info['last_activity'] > 300:  # 5 minutes
-            inactive_connections.append(conn_id)
-    
-    # Log results
-    if expired_tokens or inactive_connections:
-        logger.info(f"Cleaned up {len(expired_tokens)} expired tokens and {len(inactive_connections)} inactive connections")
-    
-    return len(expired_tokens) + len(inactive_connections)
+def stop_websocket_server():
+    """Stop the WebSocket server"""
+    global server
+    if server:
+        logger.info("Stopping WebSocket server")
+        server.close()
+        server = None

@@ -3,8 +3,11 @@
 
 # Start the websocket server in the background
 echo "Starting WebSocket server..."
-python run_websocket.py &
+python debug_websocket.py &
 WEBSOCKET_PID=$!
+
+# Give the WebSocket server a moment to start up
+sleep 2
 
 # Start the Flask application
 echo "Starting Flask application..."

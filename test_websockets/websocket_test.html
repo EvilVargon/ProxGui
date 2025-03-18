@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+</head>
+<body>
+    <h1>WebSocket Test</h1>
+    <div>
+        <button id="connectBtn">Connect</button>
+        <button id="sendBtn" disabled>Send Message</button>
+        <button id="disconnectBtn" disabled>Disconnect</button>
+    </div>
+    <div>
+        <p>Status: <span id="status">Disconnected</span></p>
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        let ws = null;
+        
+        document.getElementById('connectBtn').addEventListener('click', function() {
+            const url = `ws://localhost:8765/test`;
+            document.getElementById('status').textContent = 'Connecting...';
+            
+            try {
+                ws = new WebSocket(url);
+                
+                ws.onopen = function() {
+                    document.getElementById('status').textContent = 'Connected';
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('sendBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = false;
+                    addMessage('Connected to WebSocket server');
+                };
+                
+                ws.onmessage = function(event) {
+                    addMessage(`Received: ${event.data}`);
+                };
+                
+                ws.onclose = function(event) {
+                    document.getElementById('status').textContent = 'Disconnected';
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('sendBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = true;
+                    addMessage(`Disconnected: ${event.code} - ${event.reason}`);
+                    ws = null;
+                };
+                
+                ws.onerror = function(error) {
+                    document.getElementById('status').textContent = 'Error';
+                    addMessage(`Error: ${error}`);
+                };
+            } catch (error) {
+                document.getElementById('status').textContent = 'Error';
+                addMessage(`Error creating WebSocket: ${error.message}`);
+            }
+        });
+        
+        document.getElementById('sendBtn').addEventListener('click', function() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const message = `Test message: ${new Date().toISOString()}`;
+                ws.send(message);
+                addMessage(`Sent: ${message}`);
+            }
+        });
+        
+        document.getElementById('disconnectBtn').addEventListener('click', function() {
+            if (ws) {
+                ws.close();
+                document.getElementById('status').textContent = 'Disconnected';
+                document.getElementById('connectBtn').disabled = false;
+                document.getElementById('sendBtn').disabled = true;
+                document.getElementById('disconnectBtn').disabled = true;
+                addMessage('Disconnected by user');
+                ws = null;
+            }
+        });
+        
+        function addMessage(text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = text;
+            document.getElementById('messages').appendChild(messageDiv);
+        }
+    </script>
+</body>
+</html>
