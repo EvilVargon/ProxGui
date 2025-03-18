@@ -11,14 +11,14 @@ import uuid
 from urllib.parse import parse_qs
 from simple_websocket_server import WebSocketServer, WebSocket
 
-# Import token storage
+# Import token storage - use the single consistent token store
 from app.proxmox.token_store import get_token, cleanup_tokens
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("websocket-handler")
 
-# Store active VNC connections
+# Store active VNC connections (runtime connections, not persistent storage)
 active_connections = {}
 
 def generate_token():
@@ -78,62 +78,56 @@ class VNCWebSocketHandler(WebSocket):
         
         logger.info(f"Token from query: {token}")
         
-        # Check the token file directly
-        import os
-        import json
-        
-        token_file = os.path.join(os.path.dirname(__file__), '../../websocket_tokens.json')
-        logger.info(f"Token file path: {token_file}")
-        logger.info(f"Token file exists: {os.path.exists(token_file)}")
-        
-        tokens_from_file = {}
-        if os.path.exists(token_file):
-            try:
-                with open(token_file, 'r') as f:
-                    tokens_from_file = json.load(f)
-                    logger.info(f"Loaded {len(tokens_from_file)} tokens from file")
-                    logger.info(f"Available tokens: {list(tokens_from_file.keys())}")
-            except json.JSONDecodeError:
-                logger.error(f"Error decoding token file")
-        
         # Validate token
         if not token:
             logger.warning(f"Client from {client_address} tried to connect without token")
             self.close(1008, "Missing token")
             return
         
-        # Look for the token in the file directly
-        token_data = None
-        if token in tokens_from_file:
-            token_data = tokens_from_file[token]
-            logger.info(f"Found token in file: {token}")
-        else:
-            # Try the API
-            token_data = get_token(token)
-            if token_data:
-                logger.info(f"Found token via API: {token}")
+        # Get token data from the centralized token store
+        token_data = get_token(token)
         
         if token_data:
             # Handle the token data format
             actual_data = token_data.get('data', {})
+            logger.info(f"Token validated successfully: {token}")
+            
+            # *** DEBUG: Print the token data to see what we have ***
             logger.info(f"Token data: {actual_data}")
             
-            # Register this connection
-            self.conn_id = secrets.token_hex(16)
-            active_connections[self.conn_id] = {
-                'client': self,
-                'last_activity': time.time(),
-                'token_data': actual_data,
-                'client_host': client_address
-            }
-            
-            logger.info(f"Connection {self.conn_id} registered successfully")
+            try:
+                # For debugging only - accept the connection and echo data
+                # In a real implementation, establish actual VNC connection
+                
+                # Register this connection
+                self.conn_id = secrets.token_hex(16)
+                active_connections[self.conn_id] = {
+                    'client': self,
+                    'last_activity': time.time(),
+                    'token_data': actual_data,
+                    'client_host': client_address
+                }
+                
+                logger.info(f"Connection {self.conn_id} registered successfully")
+                
+                # *** This is a stub for actual VNC proxy implementation ***
+                # You'll need to implement the actual VNC proxy connection
+                # using a library like websockify or vnc-websocket-proxy
+                
+                # For now, just accept the connection and echo data
+                # Send a welcome message
+                self.send_message(json.dumps({
+                    "type": "success", 
+                    "message": "WebSocket connection established successfully"
+                }))
+                
+            except Exception as e:
+                logger.exception(f"Error establishing VNC connection: {e}")
+                self.close(1011, f"Failed to establish VNC connection: {str(e)}")
         else:
             logger.warning(f"Invalid token: {token}")
             self.close(1008, "Invalid token")
-        
-        logger.info(f"Validated token for VM with token={token}")
-    
+
     def handle_close(self):
         """Handle WebSocket connection close"""
         client_address = self.address[0] if hasattr(self, 'address') else 'unknown'

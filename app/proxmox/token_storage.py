@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # File to store tokens
-TOKEN_FILE = os.path.join(os.path.dirname(__file__), '../../websocket_tokens.json')
+TOKEN_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../websocket_tokens.json'))
 
 # Mutex for thread-safe operations
 token_mutex = threading.Lock()

@@ -1,16 +1,20 @@
-# In app/proxmox/token_store.py
+# app/proxmox/token_store.py
 import os
 import json
 import time
 import threading
+import logging
 
-# Fix the token file path - use an absolute path
+# Set up logging
+logger = logging.getLogger(__name__)
+
+# Use absolute path for token file
 TOKEN_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../websocket_tokens.json'))
 TOKEN_LOCK = threading.Lock()
 
 def save_token(token, data):
     """Save a token to the shared file"""
-    print(f"DEBUG: Saving token {token} to file {TOKEN_FILE}")
+    logger.info(f"Saving token {token} to file {TOKEN_FILE}")
     
     # Create directory if it doesn't exist
     os.makedirs(os.path.dirname(TOKEN_FILE), exist_ok=True)
@@ -36,17 +40,17 @@ def save_token(token, data):
         with open(TOKEN_FILE, 'w') as f:
             json.dump(tokens, f)
         
-        print(f"DEBUG: Saved token {token} to file {TOKEN_FILE}")
-        print(f"DEBUG: File now contains {len(tokens)} tokens")
+        logger.info(f"Saved token {token} to file {TOKEN_FILE}")
+        logger.debug(f"File now contains {len(tokens)} tokens")
     
     return True
 
 def get_token(token):
     """Get a token from the shared file"""
-    print(f"DEBUG: Looking up token {token} in file {TOKEN_FILE}")
+    logger.debug(f"Looking up token {token} in file {TOKEN_FILE}")
     
     if not os.path.exists(TOKEN_FILE):
-        print(f"DEBUG: Token file {TOKEN_FILE} does not exist")
+        logger.warning(f"Token file {TOKEN_FILE} does not exist")
         return None
     
     with TOKEN_LOCK:
@@ -54,13 +58,13 @@ def get_token(token):
             with open(TOKEN_FILE, 'r') as f:
                 tokens = json.load(f)
                 if token in tokens:
-                    print(f"DEBUG: Found token {token} in file")
+                    logger.debug(f"Found token {token} in file")
                     return tokens[token]
                 else:
-                    print(f"DEBUG: Token {token} not found in file")
-                    print(f"DEBUG: Available tokens: {list(tokens.keys())}")
+                    logger.warning(f"Token {token} not found in file")
+                    logger.debug(f"Available tokens: {list(tokens.keys())}")
         except (json.JSONDecodeError, FileNotFoundError) as e:
-            print(f"DEBUG: Error reading token file: {e}")
+            logger.error(f"Error reading token file: {e}")
             return None
     
     return None
@@ -89,8 +93,10 @@ def cleanup_tokens():
                 with open(TOKEN_FILE, 'w') as f:
                     json.dump(tokens, f)
                 
+                logger.info(f"Cleaned up {len(expired)} expired tokens")
                 return len(expired)
-        except Exception:
+        except Exception as e:
+            logger.error(f"Error cleaning up tokens: {e}")
             return 0
     
     return 0

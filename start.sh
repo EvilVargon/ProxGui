@@ -3,7 +3,7 @@
 
 # Start the websocket server in the background
 echo "Starting WebSocket server..."
-python debug_websocket.py &
+python run_websocket.py &
 WEBSOCKET_PID=$!
 
 # Give the WebSocket server a moment to start up

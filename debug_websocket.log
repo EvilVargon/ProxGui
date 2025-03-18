@@ -149,3 +149,111 @@
 2025-03-17 20:01:33,794 [INFO] Available tokens: ['7d218c5d-9484-4bc2-b104-3b1e586b3537']
 2025-03-17 20:01:33,795 [WARNING] Invalid token: 6ea4c193-c2df-420d-837f-3e67e1f12e06
 2025-03-17 20:01:33,795 [INFO] Connection closed
+2025-03-17 20:53:13,084 [INFO] Created debug token: 8ea6c9ec-a56d-4bb1-a191-fed19e9c35b9
+2025-03-17 20:53:13,084 [INFO] Starting debug WebSocket server on 0.0.0.0:8765
+2025-03-17 20:53:13,084 [INFO] Debug token: 8ea6c9ec-a56d-4bb1-a191-fed19e9c35b9
+2025-03-17 20:53:34,698 [INFO] New connection from 127.0.0.1
+2025-03-17 20:53:34,698 [INFO] Connection path: /api/ws/vnc?token=530c91fa-a93f-49c3-96a7-6a2a2ca08eab&type=qemu
+2025-03-17 20:53:34,698 [INFO] Query string: token=530c91fa-a93f-49c3-96a7-6a2a2ca08eab&type=qemu
+2025-03-17 20:53:34,698 [INFO] Parsed query param: token=530c91fa-a93f-49c3-96a7-6a2a2ca08eab
+2025-03-17 20:53:34,698 [INFO] Parsed query param: type=qemu
+2025-03-17 20:53:34,698 [INFO] Token from query: 530c91fa-a93f-49c3-96a7-6a2a2ca08eab
+2025-03-17 20:53:34,698 [INFO] Loaded 1 tokens from file
+2025-03-17 20:53:34,699 [INFO] Available tokens: ['8ea6c9ec-a56d-4bb1-a191-fed19e9c35b9']
+2025-03-17 20:53:34,699 [WARNING] Invalid token: 530c91fa-a93f-49c3-96a7-6a2a2ca08eab
+2025-03-17 20:53:34,699 [INFO] Connection closed
+2025-03-17 20:55:31,734 [INFO] Created debug token: 31df4cfe-3ce7-4592-9436-b38f1d4dd4a8
+2025-03-17 20:55:31,734 [INFO] Starting debug WebSocket server on 0.0.0.0:8765
+2025-03-17 20:55:31,734 [INFO] Debug token: 31df4cfe-3ce7-4592-9436-b38f1d4dd4a8
+2025-03-17 20:55:38,585 [INFO] New connection from 127.0.0.1
+2025-03-17 20:55:38,585 [INFO] Connection path: /api/ws/vnc?token=9ad11008-0830-49ae-b5a7-e55bcee4a76d&type=qemu
+2025-03-17 20:55:38,585 [INFO] Query string: token=9ad11008-0830-49ae-b5a7-e55bcee4a76d&type=qemu
+2025-03-17 20:55:38,585 [INFO] Parsed query param: token=9ad11008-0830-49ae-b5a7-e55bcee4a76d
+2025-03-17 20:55:38,585 [INFO] Parsed query param: type=qemu
+2025-03-17 20:55:38,585 [INFO] Token from query: 9ad11008-0830-49ae-b5a7-e55bcee4a76d
+2025-03-17 20:55:38,585 [INFO] Loaded 1 tokens from file
+2025-03-17 20:55:38,585 [INFO] Available tokens: ['31df4cfe-3ce7-4592-9436-b38f1d4dd4a8']
+2025-03-17 20:55:38,585 [WARNING] Invalid token: 9ad11008-0830-49ae-b5a7-e55bcee4a76d
+2025-03-17 20:55:38,586 [INFO] Connection closed
+2025-03-17 20:58:46,219 [INFO] New connection from 127.0.0.1
+2025-03-17 20:58:46,219 [INFO] Connection path: /api/ws/vnc?token=db8de505-7368-4e81-a0ff-4487bb017524&type=qemu
+2025-03-17 20:58:46,219 [INFO] Query string: token=db8de505-7368-4e81-a0ff-4487bb017524&type=qemu
+2025-03-17 20:58:46,220 [INFO] Parsed query param: token=db8de505-7368-4e81-a0ff-4487bb017524
+2025-03-17 20:58:46,220 [INFO] Parsed query param: type=qemu
+2025-03-17 20:58:46,220 [INFO] Token from query: db8de505-7368-4e81-a0ff-4487bb017524
+2025-03-17 20:58:46,220 [INFO] Loaded 1 tokens from file
+2025-03-17 20:58:46,220 [INFO] Available tokens: ['31df4cfe-3ce7-4592-9436-b38f1d4dd4a8']
+2025-03-17 20:58:46,220 [WARNING] Invalid token: db8de505-7368-4e81-a0ff-4487bb017524
+2025-03-17 20:58:46,220 [INFO] Connection closed
+2025-03-17 20:58:49,348 [INFO] New connection from 127.0.0.1
+2025-03-17 20:58:49,348 [INFO] Connection path: /api/ws/vnc?token=50ca6f6f-fbeb-4fcb-99b7-7a826d884757&type=qemu
+2025-03-17 20:58:49,348 [INFO] Query string: token=50ca6f6f-fbeb-4fcb-99b7-7a826d884757&type=qemu
+2025-03-17 20:58:49,348 [INFO] Parsed query param: token=50ca6f6f-fbeb-4fcb-99b7-7a826d884757
+2025-03-17 20:58:49,348 [INFO] Parsed query param: type=qemu
+2025-03-17 20:58:49,348 [INFO] Token from query: 50ca6f6f-fbeb-4fcb-99b7-7a826d884757
+2025-03-17 20:58:49,348 [INFO] Loaded 1 tokens from file
+2025-03-17 20:58:49,348 [INFO] Available tokens: ['31df4cfe-3ce7-4592-9436-b38f1d4dd4a8']
+2025-03-17 20:58:49,348 [WARNING] Invalid token: 50ca6f6f-fbeb-4fcb-99b7-7a826d884757
+2025-03-17 20:58:49,348 [INFO] Connection closed
+2025-03-17 20:58:51,021 [INFO] New connection from 127.0.0.1
+2025-03-17 20:58:51,021 [INFO] Connection path: /api/ws/vnc?token=7fc56a3a-fa1e-48df-ba34-494acd7ff902&type=qemu
+2025-03-17 20:58:51,021 [INFO] Query string: token=7fc56a3a-fa1e-48df-ba34-494acd7ff902&type=qemu
+2025-03-17 20:58:51,022 [INFO] Parsed query param: token=7fc56a3a-fa1e-48df-ba34-494acd7ff902
+2025-03-17 20:58:51,022 [INFO] Parsed query param: type=qemu
+2025-03-17 20:58:51,022 [INFO] Token from query: 7fc56a3a-fa1e-48df-ba34-494acd7ff902
+2025-03-17 20:58:51,022 [INFO] Loaded 1 tokens from file
+2025-03-17 20:58:51,022 [INFO] Available tokens: ['31df4cfe-3ce7-4592-9436-b38f1d4dd4a8']
+2025-03-17 20:58:51,022 [WARNING] Invalid token: 7fc56a3a-fa1e-48df-ba34-494acd7ff902
+2025-03-17 20:58:51,022 [INFO] Connection closed
+2025-03-17 20:58:56,382 [INFO] New connection from 127.0.0.1
+2025-03-17 20:58:56,383 [INFO] Connection path: /api/ws/vnc?token=4f518319-2609-49d3-b5a6-9bf8e3bbeefc&type=qemu
+2025-03-17 20:58:56,383 [INFO] Query string: token=4f518319-2609-49d3-b5a6-9bf8e3bbeefc&type=qemu
+2025-03-17 20:58:56,383 [INFO] Parsed query param: token=4f518319-2609-49d3-b5a6-9bf8e3bbeefc
+2025-03-17 20:58:56,383 [INFO] Parsed query param: type=qemu
+2025-03-17 20:58:56,383 [INFO] Token from query: 4f518319-2609-49d3-b5a6-9bf8e3bbeefc
+2025-03-17 20:58:56,383 [INFO] Loaded 1 tokens from file
+2025-03-17 20:58:56,383 [INFO] Available tokens: ['31df4cfe-3ce7-4592-9436-b38f1d4dd4a8']
+2025-03-17 20:58:56,383 [WARNING] Invalid token: 4f518319-2609-49d3-b5a6-9bf8e3bbeefc
+2025-03-17 20:58:56,383 [INFO] Connection closed
+2025-03-17 21:02:34,968 [INFO] Created debug token: 3a4b8726-9006-4dd6-803c-3fece7f5e9ce
+2025-03-17 21:02:34,969 [INFO] Starting debug WebSocket server on 0.0.0.0:8765
+2025-03-17 21:02:34,969 [INFO] Debug token: 3a4b8726-9006-4dd6-803c-3fece7f5e9ce
+2025-03-17 21:02:50,903 [INFO] New connection from 127.0.0.1
+2025-03-17 21:02:50,903 [INFO] Connection path: /api/ws/vnc?token=fd05e7e6-46d7-468c-9c55-6a7f1a9513bd&type=qemu
+2025-03-17 21:02:50,903 [INFO] Query string: token=fd05e7e6-46d7-468c-9c55-6a7f1a9513bd&type=qemu
+2025-03-17 21:02:50,903 [INFO] Parsed query param: token=fd05e7e6-46d7-468c-9c55-6a7f1a9513bd
+2025-03-17 21:02:50,903 [INFO] Parsed query param: type=qemu
+2025-03-17 21:02:50,903 [INFO] Token from query: fd05e7e6-46d7-468c-9c55-6a7f1a9513bd
+2025-03-17 21:02:50,903 [INFO] Loaded 1 tokens from file
+2025-03-17 21:02:50,903 [INFO] Available tokens: ['3a4b8726-9006-4dd6-803c-3fece7f5e9ce']
+2025-03-17 21:02:50,903 [WARNING] Invalid token: fd05e7e6-46d7-468c-9c55-6a7f1a9513bd
+2025-03-17 21:02:50,903 [INFO] Connection closed
+2025-03-17 21:06:10,999 [INFO] Created debug token: e8d115a7-d842-480a-b4f0-77e8fd419620
+2025-03-17 21:06:10,999 [INFO] Starting debug WebSocket server on 0.0.0.0:8765
+2025-03-17 21:06:10,999 [INFO] Debug token: e8d115a7-d842-480a-b4f0-77e8fd419620
+2025-03-17 21:07:29,041 [INFO] Created debug token: 4fef8739-743b-4120-a33a-34830ccdad4b
+2025-03-17 21:07:29,042 [INFO] Starting debug WebSocket server on 0.0.0.0:8765
+2025-03-17 21:07:29,042 [INFO] Debug token: 4fef8739-743b-4120-a33a-34830ccdad4b
+2025-03-17 21:07:35,237 [INFO] New connection from 127.0.0.1
+2025-03-17 21:07:35,237 [INFO] Connection path: /api/ws/vnc?token=259517ff-2a06-4c79-aad9-0779b09fab0c&type=qemu
+2025-03-17 21:07:35,237 [INFO] Query string: token=259517ff-2a06-4c79-aad9-0779b09fab0c&type=qemu
+2025-03-17 21:07:35,237 [INFO] Parsed query param: token=259517ff-2a06-4c79-aad9-0779b09fab0c
+2025-03-17 21:07:35,237 [INFO] Parsed query param: type=qemu
+2025-03-17 21:07:35,237 [INFO] Token from query: 259517ff-2a06-4c79-aad9-0779b09fab0c
+2025-03-17 21:07:35,237 [INFO] Loaded 1 tokens from file
+2025-03-17 21:07:35,237 [INFO] Available tokens: ['4fef8739-743b-4120-a33a-34830ccdad4b']
+2025-03-17 21:07:35,237 [WARNING] Invalid token: 259517ff-2a06-4c79-aad9-0779b09fab0c
+2025-03-17 21:07:35,238 [INFO] Connection closed
+2025-03-17 21:09:12,714 [INFO] Created debug token: 009d02d0-91b4-40a7-8cb7-9d3930a89b89
+2025-03-17 21:09:12,714 [INFO] Starting debug WebSocket server on 0.0.0.0:8765
+2025-03-17 21:09:12,714 [INFO] Debug token: 009d02d0-91b4-40a7-8cb7-9d3930a89b89
+2025-03-17 21:09:27,431 [INFO] New connection from 127.0.0.1
+2025-03-17 21:09:27,431 [INFO] Connection path: /api/ws/vnc?token=b514fd0e-c8c6-41d2-aa46-9a2fe7f52f72&type=qemu
+2025-03-17 21:09:27,431 [INFO] Query string: token=b514fd0e-c8c6-41d2-aa46-9a2fe7f52f72&type=qemu
+2025-03-17 21:09:27,432 [INFO] Parsed query param: token=b514fd0e-c8c6-41d2-aa46-9a2fe7f52f72
+2025-03-17 21:09:27,432 [INFO] Parsed query param: type=qemu
+2025-03-17 21:09:27,432 [INFO] Token from query: b514fd0e-c8c6-41d2-aa46-9a2fe7f52f72
+2025-03-17 21:09:27,432 [INFO] Loaded 1 tokens from file
+2025-03-17 21:09:27,432 [INFO] Available tokens: ['009d02d0-91b4-40a7-8cb7-9d3930a89b89']
+2025-03-17 21:09:27,432 [WARNING] Invalid token: b514fd0e-c8c6-41d2-aa46-9a2fe7f52f72
+2025-03-17 21:09:27,432 [INFO] Connection closed

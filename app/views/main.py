@@ -12,7 +12,9 @@ import time
 import os
 import json
 import math
+import logging
 
+logger = logging.getLogger("websocket-server")
 bp = Blueprint('main', __name__)
 
 # Initialize folder manager
@@ -519,7 +521,7 @@ def vm_vncproxy(node, vmid):
     vmtype = request.args.get('type', 'qemu')
     
     try:
-        # Import token storage
+        # Import token storage - use the consolidated token store
         from app.proxmox.token_store import save_token
         from app.proxmox.websocket import generate_token
         
@@ -539,16 +541,31 @@ def vm_vncproxy(node, vmid):
             # Generate a token for the WebSocket connection
             token = generate_token()
             
-            # Save token to shared file
-            save_token(token, {
+            logger.info(f"FLASK: Token {token} created at {time.time()}")
+            logger.info(f"Current working directory: {os.getcwd()}")
+
+            # Store the token data
+            token_data = {
                 'ticket': vnc_info['ticket'],
                 'node': node,
                 'vmid': vmid,
                 'vmtype': vmtype,
                 'host': api.host,
                 'port': api.port
-            })
+            }
             
+            # Save token to shared file
+            save_token(token, token_data)
+            
+            logger.info(f"FLASK: Token file path: {os.path.abspath('websocket_tokens.json')}")
+            logger.info(f"FLASK: Saved token {token} to file")
+            # If possible, dump the contents of the file
+            try:
+                with open(os.path.abspath('websocket_tokens.json'), 'r') as f:
+                    logger.info(f"FLASK: File contents: {f.read()}")
+            except Exception as e:
+                logger.info(f"FLASK: Error reading file: {str(e)}")
+
             # Return the token to the client
             return jsonify({
                 'success': True,

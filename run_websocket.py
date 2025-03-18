@@ -23,7 +23,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("websocket-server")
 
-if __name__ == "__main__":
+async def main():
     try:
         # Get host and port from environment variables if set
         host = os.environ.get('WEBSOCKET_HOST', '0.0.0.0')
@@ -31,16 +31,20 @@ if __name__ == "__main__":
         
         # Start the WebSocket server
         server = start_websocket_server(host, port)
+        logger.info(f"WebSocket server running on {host}:{port}")
         
         # Keep the main thread alive
-        logger.info(f"WebSocket server running on {host}:{port}")
-        logger.info("Press Ctrl+C to stop the server")
-        
-        # Wait for keyboard interrupt
-        import time
-        while True:
-            time.sleep(1)
+        import asyncio
+        await asyncio.Future()  # Run forever
             
+    except Exception as e:
+        logger.error(f"WebSocket server error: {e}")
+        logger.exception(e)
+
+if __name__ == "__main__":
+    try:
+        import asyncio
+        asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("WebSocket server stopped by user")
         stop_websocket_server()
