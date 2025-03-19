@@ -4,3 +4,6 @@ venv/*
 data*
 _bkp*
 config.py
+debug_*
+websocket.log
+websocket_tokens.json
