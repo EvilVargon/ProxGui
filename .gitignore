@@ -7,3 +7,6 @@ config.py
 debug_*
 websocket.log
 websocket_tokens.json
+websockify.log
+debug_websockify.log
+*.pid

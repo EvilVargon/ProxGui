@@ -23,7 +23,8 @@ logging.basicConfig(
 logger = logging.getLogger("debug-websocket")
 
 # File to store tokens
-TOKEN_FILE = 'debug_tokens.json'
+# Use the same token file as the main application
+TOKEN_FILE = os.path.abspath(os.path.join(os.getcwd(), 'websocket_tokens.json'))
 DEBUG_TOKEN = str(uuid.uuid4())  # Generate a fixed token for testing
 
 # Create a debug token and save it

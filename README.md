@@ -9,7 +9,7 @@ A user-friendly web interface for Proxmox VE that provides a simplified experien
 - VM performance monitoring [TODO]
 - Start/stop VM controls
 - Create/restore snapshots
-- Embedded noVNC console [TODO]
+- Embedded noVNC console
 - Simplified VM creation
 
 ## Setup and Installation
@@ -45,7 +45,17 @@ A user-friendly web interface for Proxmox VE that provides a simplified experien
    python run.py
    ```
 
-6. Visit http://localhost:5000 in your browser
+6. For VNC console support, run the websockify proxy:
+   ```bash
+   python websockify_proxy.py &
+   ```
+   
+   Alternatively, use the start script which handles both services:
+   ```bash
+   ./start.sh
+   ```
+
+7. Visit http://localhost:5000 in your browser
 
 ## Project Structure
 
@@ -59,3 +69,34 @@ A user-friendly web interface for Proxmox VE that provides a simplified experien
   - `views/`: View functions
 - `requirements.txt`: Python dependencies
 - `run.py`: Application entry point
+- `websockify_proxy.py`: WebSocket proxy for VNC connections
+- `start.sh`: Script to start both Flask app and WebSocket proxy
+
+## Troubleshooting VNC Console
+
+If you experience issues with the VNC console:
+
+1. Ensure the websockify proxy is running:
+   ```bash
+   ps aux | grep websockify
+   ```
+
+2. Check if the required port (8765) is available:
+   ```bash
+   nc -z localhost 8765 || echo "Port available"
+   ```
+
+3. Run the VNC fix script:
+   ```bash
+   ./fix_vnc_complete.sh
+   ```
+
+4. Use the debugging tool to view token information:
+   ```bash
+   ./debug_websockify.py display
+   ```
+
+5. Check the logs for errors:
+   ```bash
+   cat websockify.log
+   ```

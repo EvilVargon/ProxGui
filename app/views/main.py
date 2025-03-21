@@ -535,7 +535,15 @@ def vm_vncproxy(node, vmid):
             endpoint = f"nodes/{node}/lxc/{vmid}/vncproxy"
         
         # Get VNC proxy ticket from Proxmox
-        vnc_info = api.post_request(endpoint, {})
+        logger.info(f"Getting VNC proxy ticket for {node}/{vmid} ({vmtype})")
+        
+        # Add a proper password to enable VNC access
+        vnc_params = {
+            'websocket': 1  # Request WebSocket-compatible connection
+        }
+        
+        vnc_info = api.post_request(endpoint, vnc_params)
+        logger.info(f"VNC info received: {vnc_info}")
         
         if vnc_info:
             # Generate a token for the WebSocket connection
@@ -544,18 +552,44 @@ def vm_vncproxy(node, vmid):
             logger.info(f"FLASK: Token {token} created at {time.time()}")
             logger.info(f"Current working directory: {os.getcwd()}")
 
-            # Store the token data
+            # Structure the token data correctly - avoid nested 'data' fields
             token_data = {
                 'ticket': vnc_info['ticket'],
                 'node': node,
                 'vmid': vmid,
                 'vmtype': vmtype,
                 'host': api.host,
-                'port': api.port
+                'port': vnc_info.get('port', 0),  # Use the actual VNC port from the response
+                'cert': None
             }
+            
+            logger.info(f"Proxmox VNC info: host={api.host}, port={vnc_info.get('port', 0)}")
             
             # Save token to shared file
             save_token(token, token_data)
+            
+            # Clean up old tokens
+            try:
+                token_file = os.path.abspath('websocket_tokens.json')
+                if os.path.exists(token_file):
+                    with open(token_file, 'r') as f:
+                        current_tokens = json.load(f)
+                        
+                        # Remove any old tokens (older than 5 minutes)
+                        current_time = time.time()
+                        for token_id in list(current_tokens.keys()):
+                            if token_id == token:  # Skip the token we just created
+                                continue
+                            token_info = current_tokens[token_id]
+                            if 'created_at' in token_info and current_time - token_info['created_at'] > 300:
+                                logger.info(f"Removing old token: {token_id}")
+                                del current_tokens[token_id]
+                        
+                        # Write back
+                        with open(token_file, 'w') as f:
+                            json.dump(current_tokens, f, indent=2)
+            except Exception as e:
+                logger.info(f"Error cleaning up tokens: {e}")
             
             logger.info(f"FLASK: Token file path: {os.path.abspath('websocket_tokens.json')}")
             logger.info(f"FLASK: Saved token {token} to file")
@@ -573,7 +607,9 @@ def vm_vncproxy(node, vmid):
                     'token': token,
                     'ticket': vnc_info['ticket'],
                     'port': vnc_info.get('port', 0),
-                    'upid': vnc_info.get('upid', '')
+                    'upid': vnc_info.get('upid', ''),
+                    'host': api.host,  # Include host for debugging
+                    'debug_info': f"Connection: {api.host}:{vnc_info.get('port', 0)}"
                 }
             })
         else:

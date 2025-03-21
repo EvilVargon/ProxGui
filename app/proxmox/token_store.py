@@ -9,8 +9,36 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Use absolute path for token file
-TOKEN_FILE = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../websocket_tokens.json'))
+# Make sure this is an absolute path to avoid any path resolution issues
+TOKEN_FILE = os.path.abspath(os.path.join(os.getcwd(), 'websocket_tokens.json'))
 TOKEN_LOCK = threading.Lock()
+
+# Ensure token file exists with proper structure on module import
+def initialize_token_file():
+    """Ensure token file exists and is properly initialized"""
+    if not os.path.exists(TOKEN_FILE):
+        logger.info(f"Creating new token file at {TOKEN_FILE}")
+        os.makedirs(os.path.dirname(TOKEN_FILE), exist_ok=True)
+        with open(TOKEN_FILE, 'w') as f:
+            json.dump({}, f)
+    else:
+        # Verify the file contains valid JSON
+        try:
+            with open(TOKEN_FILE, 'r') as f:
+                content = f.read().strip()
+                if not content:  # Empty file
+                    logger.info(f"Empty token file found, initializing with empty object")
+                    with open(TOKEN_FILE, 'w') as f:
+                        json.dump({}, f)
+                else:
+                    json.loads(content)  # Just to validate
+        except json.JSONDecodeError:
+            logger.warning(f"Invalid JSON in token file, reinitializing")
+            with open(TOKEN_FILE, 'w') as f:
+                json.dump({}, f)
+
+# Initialize token file when module is imported
+initialize_token_file()
 
 def save_token(token, data):
     """Save a token to the shared file"""
@@ -25,7 +53,11 @@ def save_token(token, data):
         if os.path.exists(TOKEN_FILE):
             try:
                 with open(TOKEN_FILE, 'r') as f:
-                    tokens = json.load(f)
+                    content = f.read().strip()
+                    if content:
+                        tokens = json.loads(content)
+                    else:
+                        tokens = {}
             except json.JSONDecodeError:
                 # If file is corrupted, start fresh
                 tokens = {}

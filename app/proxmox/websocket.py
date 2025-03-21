@@ -12,7 +12,7 @@ from urllib.parse import parse_qs
 from simple_websocket_server import WebSocketServer, WebSocket
 
 # Import token storage - use the single consistent token store
-from app.proxmox.token_store import get_token, cleanup_tokens
+from app.proxmox.token_store import get_token, cleanup_tokens, TOKEN_FILE
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -77,6 +77,17 @@ class VNCWebSocketHandler(WebSocket):
         vmtype = query.get('type', '')
         
         logger.info(f"Token from query: {token}")
+        logger.info(f"Using token file: {TOKEN_FILE}")
+        logger.info(f"Token file exists: {os.path.exists(TOKEN_FILE)}")
+        
+        # Try to display the contents of the token file for debugging
+        try:
+            if os.path.exists(TOKEN_FILE):
+                with open(TOKEN_FILE, 'r') as f:
+                    file_content = f.read()
+                    logger.info(f"Token file contents: {file_content[:1000]}")
+        except Exception as e:
+            logger.error(f"Error reading token file: {e}")
         
         # Validate token
         if not token:
@@ -86,11 +97,13 @@ class VNCWebSocketHandler(WebSocket):
         
         # Get token data from the centralized token store
         token_data = get_token(token)
+        logger.info(f"Token data retrieved: {token_data is not None}")
         
         if token_data:
-            # Handle the token data format
-            actual_data = token_data.get('data', {})
             logger.info(f"Token validated successfully: {token}")
+            
+            # Use token data directly without expecting a nested 'data' field
+            actual_data = token_data
             
             # *** DEBUG: Print the token data to see what we have ***
             logger.info(f"Token data: {actual_data}")
@@ -110,16 +123,30 @@ class VNCWebSocketHandler(WebSocket):
                 
                 logger.info(f"Connection {self.conn_id} registered successfully")
                 
-                # *** This is a stub for actual VNC proxy implementation ***
-                # You'll need to implement the actual VNC proxy connection
-                # using a library like websockify or vnc-websocket-proxy
+                # *** Implement a basic VNC proxy for debugging ***
+                # In a production environment, you should implement a proper VNC proxy
+                # with a library like websockify
                 
-                # For now, just accept the connection and echo data
+                # For now, we'll implement a simple echo proxy that simulates a VNC connection
+                # This won't work with a real VNC client but will help debug the connection flow
+                
                 # Send a welcome message
                 self.send_message(json.dumps({
-                    "type": "success", 
-                    "message": "WebSocket connection established successfully"
+                    "type": "vnc.connected", 
+                    "message": "VNC connection established successfully",
+                    "ticket": actual_data.get('ticket', 'unknown')
                 }))
+                
+                # Here's where you would normally connect to the Proxmox VNC server
+                # using the ticket, but we're just simulating it for debugging purposes
+                #
+                # Steps for a real implementation would be:
+                # 1. Connect to the Proxmox VNC server using the ticket
+                # 2. Set up a proxy to forward data between the WebSocket and the VNC server
+                # 3. Handle disconnections properly
+                #
+                # For a complete implementation, you might want to use websockify or
+                # implement a direct TCP-to-WebSocket proxy
                 
             except Exception as e:
                 logger.exception(f"Error establishing VNC connection: {e}")

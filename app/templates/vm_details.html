@@ -652,10 +652,23 @@
                 const vnc_info = data.data;
                 document.getElementById('statusMessage').textContent = 'Connecting to VNC...';
                 
+                // Display full details for debugging
+                console.log("VNC connection details:", {
+                    host: vnc_info.host,
+                    port: vnc_info.port,
+                    ticket: vnc_info.ticket ? vnc_info.ticket.substring(0, 20) + '...' : 'none',
+                    token: vnc_info.token,
+                    debug_info: vnc_info.debug_info
+                });
+                
                 // Connect to the VNC server via WebSocket
                 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const url = `${wsProtocol}//${window.location.hostname}:8765/api/ws/vnc?token=${vnc_info.token}&type=${type}`;
                 console.log("Connecting to WebSocket URL:", url);
+                
+                // Display the connection details for debugging
+                document.getElementById('statusMessage').textContent = 
+                    `Connecting to VNC: ${url} (ticket: ${vnc_info.ticket.substring(0, 8)}...)`;
                 
                 try {
                     // Initialize noVNC
@@ -667,6 +680,11 @@
                     
                     // Create new RFB object with simpler options
                     rfb = new RFB(document.getElementById('novnc-canvas'), url);
+                        
+                        // Increase verbosity for debugging
+                        if (rfb._logging) {
+                            rfb._logging.level = 'debug';
+                        }
                     
                     // Add event listeners
                     rfb.addEventListener("connect", () => {
@@ -678,8 +696,8 @@
                     });
                     
                     rfb.addEventListener("disconnect", (e) => {
-                        console.log("Disconnected from VNC:", e.detail.reason);
-                        document.getElementById('statusMessage').textContent = 'Disconnected: ' + e.detail.reason;
+                        console.log("Disconnected from VNC:", e.detail);
+                        document.getElementById('statusMessage').textContent = `Disconnected: ${e.detail.reason}`;
                         document.getElementById('statusMessage').style.display = 'block';
                         document.getElementById('connectBtn').innerHTML = '<i class="fas fa-plug"></i> Connect';
                         document.getElementById('connectBtn').className = 'btn btn-sm btn-success';

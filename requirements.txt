@@ -2,4 +2,7 @@ flask==2.3.3
 python-dotenv==1.0.0
 requests==2.31.0
 werkzeug==2.3.7
-gunicorn==21.2.0simple-websocket-server
+gunicorn==21.2.0
+simple-websocket-server==0.4.0
+websockify==0.11.0
+numpy==1.24.3
