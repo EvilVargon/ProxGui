@@ -142,6 +142,23 @@ footer {
     color: #adb5bd;
 }
 
+.vm-status-pending {
+    color: #fd7e14;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.6;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.6;
+    }
+}
+
 .vm-info {
     flex-grow: 1;
     min-width: 0;

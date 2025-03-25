@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request, session
 from app.proxmox.api import get_api, get_node_status, create_vm
+from app.models.task_tracker import TaskTracker
 import traceback
 import logging
 
@@ -8,6 +9,34 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 bp = Blueprint('vm_api', __name__, url_prefix='/api/vm')
+
+@bp.route('/task-status', methods=['GET'])
+def get_task_status():
+    """Get status of VM creation tasks"""
+    if 'user' not in session:
+        logger.warning("Unauthorized access attempt to task-status")
+        return jsonify({'error': 'Not authenticated'}), 401
+    
+    try:
+        # Get task tracker
+        task_tracker = TaskTracker.get_instance()
+        
+        # Get all pending VMs
+        pending_vms = task_tracker.get_pending_vms()
+        
+        return jsonify({
+            'success': True,
+            'pending_vms': pending_vms,
+            'count': len(pending_vms)
+        })
+    except Exception as e:
+        error_tb = traceback.format_exc()
+        logger.error(f"Error in task-status: {str(e)}\n{error_tb}")
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'traceback': error_tb
+        }), 500
 
 @bp.route('/available-isos', methods=['GET'])
 def available_isos():
@@ -295,25 +324,64 @@ def create_new_vm():
                 template_vmid=data.get('template_vmid'),
                 storage=data.get('storage', ''),
                 vlan=data.get('vlan'),
+                cpu_cores=int(data.get('cpu', 2)),
+                memory=int(data.get('memory', 2048)),
                 start_after_create=data.get('start_after_create', False)
             )
         
         logger.info(f"VM creation result: {result}")
         
+        # Check if result indicates an error
+        if isinstance(result, dict) and 'error' in result:
+            error_msg = result.get('error', {}).get('message', 'Unknown error')
+            logger.error(f"VM creation failed: {error_msg}")
+            return jsonify({
+                'success': False,
+                'error': error_msg
+            }), 500
+            
+        # Handle successful results
         if result:
             # Handle different types of successful results
             if isinstance(result, dict) and 'data' in result:
                 # If result is a dictionary with a 'data' key
                 vmid = result['data']
+                task_id = result.get('task_id')
+                
+                # Create task to track VM creation
+                if task_id:
+                    task_tracker = TaskTracker.get_instance()
+                    task_tracker.add_task(
+                        task_id=task_id,
+                        vmid=vmid,
+                        node=node,
+                        name=name,
+                        task_type='clone' if creation_type == 'template' else 'create'
+                    )
+                    logger.info(f"Added task tracker for VM {vmid} with task ID {task_id}")
+                
                 logger.info(f"VM created with ID: {vmid}")
                 return jsonify({
                     'success': True,
                     'vmid': vmid,
-                    'task_id': result.get('task_id')
+                    'task_id': task_id
                 })
             elif isinstance(result, str) and result.startswith('UPID:'):
                 # If result is a UPID string, extract the VMID from the request
                 vmid = int(data.get('vmid', next_vmid) if 'next_vmid' in locals() else 208)
+                task_id = result
+                
+                # Create task to track VM creation
+                task_tracker = TaskTracker.get_instance()
+                task_tracker.add_task(
+                    task_id=task_id,
+                    vmid=vmid,
+                    node=node,
+                    name=name,
+                    task_type='clone' if creation_type == 'template' else 'create'
+                )
+                logger.info(f"Added task tracker for VM {vmid} with task ID {task_id}")
+                
                 logger.info(f"VM creation task started with UPID: {result} for VM ID: {vmid}")
                 return jsonify({
                     'success': True,

@@ -119,10 +119,21 @@ class ProxmoxAPI:
             if response.status_code in [200, 201]:
                 return response.json()['data']
             else:
-                print(f"POST request failed for {endpoint}: {response.status_code}")
+                error_msg = f"POST request failed for {endpoint}: {response.status_code}"
+                print(error_msg)
+                
+                response_text = ""
                 if response.text:
-                    print(f"Response: {response.text}")
-                return None
+                    response_text = response.text
+                    print(f"Response: {response_text}")
+                
+                # Return structured error instead of None
+                return {
+                    'error': {
+                        'message': f"{error_msg}. {response_text}", 
+                        'status_code': response.status_code
+                    }
+                }
         except Exception as e:
             print(f"Exception during POST request: {str(e)}")
             return None
@@ -752,6 +763,8 @@ def create_vm(node, name, **kwargs):
             template_vmid = kwargs.get('template_vmid')
             storage = kwargs.get('storage', '')
             vlan = kwargs.get('vlan')
+            cpu_cores = kwargs.get('cpu_cores')
+            memory = kwargs.get('memory')
             start_after_create = kwargs.get('start_after_create', False)
             
             logger.info(f"Creating VM from template {template_vmid} on node {node}")
@@ -765,17 +778,27 @@ def create_vm(node, name, **kwargs):
             
             # Add target storage if specified
             if storage:
+                # For Proxmox, specifying target without storage format can cause issues
+                # Adding target-storage and format properly
                 params['target'] = storage
                 logger.info(f"Using target storage: {storage}")
+                
+                # Some versions of Proxmox require target format to be specified
+                params['format'] = 'raw'  # Default to raw, but could be qcow2 depending on storage
             
             # Create the clone
             endpoint = f"nodes/{node}/qemu/{template_vmid}/clone"
             logger.info(f"Cloning from template with endpoint: {endpoint} and params: {params}")
             result = api.post_request(endpoint, params)
             
-            if not result:
-                logger.error(f"Failed to clone template {template_vmid}")
-                return {'error': {'message': f'Failed to clone template {template_vmid}'}}
+            # Check if result is an error response or None
+            if not result or (isinstance(result, dict) and 'error' in result):
+                error_msg = "Unknown error"
+                if isinstance(result, dict) and 'error' in result:
+                    error_msg = result['error'].get('message', 'API error')
+                
+                logger.error(f"Failed to clone template {template_vmid}: {error_msg}")
+                return {'error': {'message': f'Failed to clone template {template_vmid}: {error_msg}'}}
             
             logger.info(f"Clone result: {result}")
             
@@ -785,10 +808,8 @@ def create_vm(node, name, **kwargs):
                 # For UPID responses, structure it as a success result
                 result = {'data': next_vmid, 'task_id': result}
             
-            # If clone was successful and VLAN is specified, update the network
-            if result and vlan:
-                logger.info(f"Setting VLAN tag {vlan} for VM {next_vmid}")
-                
+            # If clone was successful, configure the VM
+            if result:
                 # Allow some time for the clone operation to start
                 time.sleep(2)  # Wait 2 seconds
                 
@@ -796,7 +817,23 @@ def create_vm(node, name, **kwargs):
                 config_endpoint = f"nodes/{node}/qemu/{next_vmid}/config"
                 config = api.get_request(config_endpoint)
                 
-                if config:
+                # Prepare update parameters
+                update_params = {}
+                
+                # Set CPU cores if specified
+                if cpu_cores:
+                    update_params['cores'] = cpu_cores
+                    logger.info(f"Setting CPU cores to {cpu_cores} for VM {next_vmid}")
+                
+                # Set memory if specified
+                if memory:
+                    update_params['memory'] = memory
+                    logger.info(f"Setting memory to {memory}MB for VM {next_vmid}")
+                
+                # Configure network VLAN if specified
+                if vlan and config:
+                    logger.info(f"Setting VLAN tag {vlan} for VM {next_vmid}")
+                    
                     # Find the network interface
                     net_device = None
                     for key in config:
@@ -827,12 +864,16 @@ def create_vm(node, name, **kwargs):
                             net_config = ','.join(new_parts)
                         
                         logger.info(f"Updated network config: {net_config}")
-                        
-                        # Update network interface
-                        update_params = {net_device: net_config}
-                        api.post_request(config_endpoint, update_params)
+                        update_params[net_device] = net_config
                     else:
                         logger.warning(f"No network device found for VM {next_vmid}")
+                
+                # Apply configuration updates if any
+                if update_params:
+                    logger.info(f"Updating VM {next_vmid} configuration with: {update_params}")
+                    api.post_request(config_endpoint, update_params)
+                else:
+                    logger.info(f"No configuration updates needed for VM {next_vmid}")
             
             # Start VM if requested
             if result and start_after_create:

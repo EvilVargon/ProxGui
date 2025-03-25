@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request, session, render_template_string
 from app.models.folder import FolderManager
 from app.proxmox.api import get_user_vms
+from app.models.task_tracker import TaskTracker
 
 bp = Blueprint('folder_api', __name__, url_prefix='/api')
 
@@ -163,6 +164,13 @@ def get_vm_tree():
     try:
         user = session['user']
         vms = get_user_vms(user['username'], user['groups'])
+        
+        # Add pending VMs that are still being created
+        task_tracker = TaskTracker.get_instance()
+        pending_vms = task_tracker.get_pending_vms()
+        if pending_vms:
+            # Add pending VMs to the list
+            vms.extend(pending_vms)
         
         # Get folder structure
         folder_structure = folder_manager.get_folder_structure()

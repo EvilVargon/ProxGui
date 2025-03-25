@@ -5,6 +5,7 @@ from app.proxmox.api import (
     get_node_status, get_storage_status, get_cluster_resources
 )
 from app.models.folder import FolderManager
+from app.models.task_tracker import TaskTracker
 import datetime
 import time
 import os
@@ -216,6 +217,13 @@ def dashboard():
         
         # Get user VMs
         vms = get_user_vms(user['username'], user['groups'])
+        
+        # Add any pending VMs that are being created
+        task_tracker = TaskTracker.get_instance()
+        pending_vms = task_tracker.get_pending_vms()
+        if pending_vms:
+            vms.extend(pending_vms)
+            
         running_vms = [vm for vm in vms if vm.get('status') == 'running']
         
         # Get cluster info
@@ -382,6 +390,12 @@ def vm_details(node, vmid):
     try:
         # Get VMs for sidebar
         vms = get_user_vms(user['username'], user['groups'])
+        
+        # Add any pending VMs that are being created
+        task_tracker = TaskTracker.get_instance()
+        pending_vms = task_tracker.get_pending_vms()
+        if pending_vms:
+            vms.extend(pending_vms)
         
         # Get VM folder tree
         folder_structure = folder_manager.get_folder_structure()

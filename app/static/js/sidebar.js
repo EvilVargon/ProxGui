@@ -1,3 +1,6 @@
+// Global refresh timer
+let vmRefreshTimer = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize folder toggle functionality
     initFolderToggles();
@@ -22,11 +25,51 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load VM tree if not already loaded
     if (document.querySelector('#vm-folder-tree .loading-spinner')) {
         loadVMTree();
+    } else {
+        // Check if we need to initialize auto-refresh for pending VMs
+        checkForPendingVMs();
     }
 
     // Initialize click handlers for VM items
     initVMClickHandlers();
 });
+
+// Remember folder open/closed states
+function saveFolderStates() {
+    const folderStates = {};
+    document.querySelectorAll('.folder-item').forEach(folder => {
+        const folderId = folder.getAttribute('data-folder-id');
+        if (folderId) {
+            const isOpen = localStorage.getItem(`folder_${folderId}_open`);
+            folderStates[folderId] = isOpen !== 'false';
+        }
+    });
+    return folderStates;
+}
+
+// Restore folder states
+function restoreFolderStates(savedStates) {
+    document.querySelectorAll('.folder-item').forEach(folder => {
+        const folderId = folder.getAttribute('data-folder-id');
+        if (folderId && folderId in savedStates) {
+            const folderContent = document.querySelector(`.folder-content[data-parent="${folderId}"]`);
+            const toggle = folder.querySelector('.folder-toggle');
+            
+            if (folderContent && toggle) {
+                const isOpen = savedStates[folderId];
+                if (!isOpen) {
+                    folderContent.style.display = 'none';
+                    toggle.innerHTML = '<i class="fas fa-caret-right"></i>';
+                } else {
+                    folderContent.style.display = 'block';
+                    toggle.innerHTML = '<i class="fas fa-caret-down"></i>';
+                }
+                // Update localStorage with the state
+                localStorage.setItem(`folder_${folderId}_open`, isOpen ? 'true' : 'false');
+            }
+        }
+    });
+}
 
 // Initialize folder toggles
 function initFolderToggles() {
@@ -120,6 +163,8 @@ function initVMClickHandlers() {
 
 // Load VM tree via AJAX
 function loadVMTree() {
+    // Save current folder states before loading
+    const folderStates = saveFolderStates();
     fetch('/api/vm-tree')
         .then(response => response.json())
         .then(data => {
@@ -129,10 +174,16 @@ function loadVMTree() {
                 initFolderToggles();
                 initVMClickHandlers();
                 
+                // Restore previously saved folder states
+                restoreFolderStates(folderStates);
+                
                 // Initialize context menu if available
                 if (window.initContextMenuAfterLoad) {
                     window.initContextMenuAfterLoad();
                 }
+                
+                // Check for pending VMs and set up auto-refresh if needed
+                checkForPendingVMs();
             } else {
                 document.getElementById('vm-folder-tree').innerHTML = 
                     `<div class="alert alert-danger">Failed to load VM tree: ${data.error}</div>`;
@@ -248,4 +299,26 @@ function searchVMs(query) {
 }
 
 // Make loadVMTree globally available so it can be called from context-menu.js
+// Check if there are any pending VMs and set up auto-refresh
+function checkForPendingVMs() {
+    // Look for pending status indicators
+    const pendingVMs = document.querySelectorAll('.vm-status-pending');
+    
+    // Clear any existing timer
+    if (vmRefreshTimer) {
+        clearTimeout(vmRefreshTimer);
+        vmRefreshTimer = null;
+    }
+    
+    // If we have pending VMs, set up auto-refresh
+    if (pendingVMs.length > 0) {
+        console.log(`Found ${pendingVMs.length} pending VMs, setting up auto-refresh`);
+        // Refresh every 10 seconds
+        vmRefreshTimer = setTimeout(() => {
+            console.log('Auto-refreshing VM tree for pending VMs');
+            loadVMTree();
+        }, 10000); // 10 seconds
+    }
+}
+
 window.loadVMTree = loadVMTree;

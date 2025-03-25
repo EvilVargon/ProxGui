@@ -412,14 +412,18 @@ function createNewVM() {
         // Get template-specific values
         const templateIdEl = document.getElementById('vmTemplate');
         const templateStorageEl = document.getElementById('templateStorage');
+        const templateCpuEl = document.getElementById('templateCpu');
+        const templateMemoryEl = document.getElementById('templateMemory');
         
-        if (!templateIdEl || !templateStorageEl) {
+        if (!templateIdEl || !templateStorageEl || !templateCpuEl || !templateMemoryEl) {
             console.error("Template form elements not found");
             return;
         }
         
         const templateId = templateIdEl.value;
         const templateStorage = templateStorageEl.value;
+        const templateCpu = parseInt(templateCpuEl.value);
+        const templateMemory = parseInt(templateMemoryEl.value);
         
         // Validate template form
         if (!templateId) {
@@ -431,7 +435,9 @@ function createNewVM() {
         requestData = {
             ...requestData,
             template_vmid: templateId,
-            storage: templateStorage || null
+            storage: templateStorage || null,
+            cpu: templateCpu,
+            memory: templateMemory
         };
     }
     
@@ -485,7 +491,7 @@ function createNewVM() {
             if (data.vmid) {
                 alert(`VM created successfully with ID: ${data.vmid}`);
             } else if (data.task_id) {
-                alert(`VM creation task started. The VM will be available shortly.`);
+                alert(`VM creation task started. The VM will appear with a spinning indicator while it's being created.\n\nThis can take a few minutes to complete.`);
             } else {
                 alert(`VM creation task submitted successfully.`);
             }

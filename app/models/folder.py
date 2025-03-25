@@ -249,11 +249,18 @@ class FolderManager:
                     # Status icon
                     status_icon = 'circle'
                     status_class = 'vm-status-off'
-                    if vm_status == 'running':
+                    is_pending = vm.get('pending_creation', False)
+                    
+                    pending_tooltip = ''
+                    if is_pending:
+                        status_icon = 'spinner fa-spin'
+                        status_class = 'vm-status-pending'
+                        pending_tooltip = ' title="VM is currently being created. This may take several minutes."'
+                    elif vm_status == 'running':
                         status_class = 'vm-status-on'
                     
                     content_html.append(f"""
-                    <div class="vm-item" data-id="{vm_id}" data-name="{vm_name}" data-node="{vm_node}" data-type="{vm_type}">
+                    <div class="vm-item" data-id="{vm_id}" data-name="{vm_name}" data-node="{vm_node}" data-type="{vm_type}"{pending_tooltip}>
                         <div class="vm-status {status_class}">
                             <i class="fas fa-{status_icon}"></i>
                         </div>
