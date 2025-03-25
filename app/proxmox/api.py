@@ -114,10 +114,13 @@ class ProxmoxAPI:
         }
         
         try:
+            print(f"POST request to {endpoint} with data: {data}")
             response = self.session.post(url, headers=headers, data=data, timeout=10)
             
             if response.status_code in [200, 201]:
-                return response.json()['data']
+                result = response.json()['data']
+                print(f"POST response for {endpoint}: {result}")
+                return result
             else:
                 error_msg = f"POST request failed for {endpoint}: {response.status_code}"
                 print(error_msg)
@@ -135,8 +138,13 @@ class ProxmoxAPI:
                     }
                 }
         except Exception as e:
-            print(f"Exception during POST request: {str(e)}")
-            return None
+            error_msg = f"Exception during POST request: {str(e)}"
+            print(error_msg)
+            return {
+                'error': {
+                    'message': error_msg
+                }
+            }
     
     def close(self):
         """Close the session"""

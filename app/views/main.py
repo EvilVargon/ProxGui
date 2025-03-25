@@ -2,7 +2,8 @@ from flask import Blueprint, render_template, session, redirect, url_for, flash,
 from app.proxmox.api import (
     get_user_vms, get_vm_status, start_vm, stop_vm, 
     create_snapshot, get_snapshots, get_cluster_info,
-    get_node_status, get_storage_status, get_cluster_resources
+    get_node_status, get_storage_status, get_cluster_resources,
+    reboot_vm, get_api
 )
 from app.models.folder import FolderManager
 from app.models.task_tracker import TaskTracker
@@ -527,6 +528,10 @@ def vm_vncproxy(node, vmid):
     vmtype = request.args.get('type', 'qemu')
     
     try:
+        # Get Proxmox API instance
+        from app.proxmox.token_store import save_token
+        import uuid
+        
         api = get_api()
         
         if vmtype == 'qemu':
@@ -534,20 +539,57 @@ def vm_vncproxy(node, vmid):
         else:  # LXC container
             endpoint = f"nodes/{node}/lxc/{vmid}/vncproxy"
         
-        # Enable console if needed
-        vnc_info = api.post_request(endpoint, {})
+        # Use correct parameters for VNC proxy
+        # Explicitly set a VNC password to address the "LC_PVE_TICKET not set" error
+        vnc_info = api.post_request(endpoint, {
+            # Generate a random VNC password if needed
+            'websocket': 1  # Request WebSocket connection type
+        })
+        
+        # Handle error responses more explicitly
+        if isinstance(vnc_info, dict) and 'error' in vnc_info:
+            error_msg = vnc_info['error'].get('message', 'Unknown API error')
+            return jsonify({
+                'success': False,
+                'error': error_msg
+            }), 500
         
         if vnc_info:
+            # Generate a token for the WebSocket connection
+            token = str(uuid.uuid4())
+            
+            # Store the token with VNC info and host information
+            token_data = {
+                'ticket': vnc_info['ticket'],
+                'host': api.host,  # Include the Proxmox host
+                'port': vnc_info.get('port', 5900),
+                'vmid': vmid,
+                'node': node,
+                'type': vmtype
+            }
+            save_token(token, token_data)
+            
+            # For debugging
+            print(f"VNC Info received: {vnc_info}")
+            
+            # Add token to the response
             return jsonify({
                 'success': True,
-                'data': vnc_info
+                'data': {
+                    'token': token,
+                    'ticket': vnc_info['ticket'],
+                    'port': vnc_info.get('port', 5900)
+                }
             })
         else:
             return jsonify({
                 'success': False,
-                'error': 'Failed to get VNC proxy'
+                'error': 'Failed to get VNC proxy: No response from server'
             }), 500
     except Exception as e:
+        import traceback
+        print(f"VNC proxy error: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({
             'success': False,
             'error': str(e)

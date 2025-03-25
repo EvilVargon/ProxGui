@@ -1,0 +1,78 @@
+2025-03-25 11:20:37,001 [INFO] Starting WebSocket proxy server on 0.0.0.0:8765
+2025-03-25 11:20:37,020 [INFO] server listening on 0.0.0.0:8765
+2025-03-25 11:24:10,011 [INFO] Starting WebSocket proxy server on 0.0.0.0:8765
+2025-03-25 11:24:10,030 [INFO] server listening on 0.0.0.0:8765
+2025-03-25 11:28:53,796 [INFO] Starting WebSocket proxy server on 0.0.0.0:8765
+2025-03-25 11:28:53,815 [INFO] server listening on 0.0.0.0:8765
+2025-03-25 11:29:03,191 [INFO] connection open
+2025-03-25 11:29:03,191 [INFO] New connection from ('127.0.0.1', 54544), path: /api/ws/vnc?token=5ae91a5b-6624-4bc0-a95f-179aff61f74c&type=qemu
+2025-03-25 11:29:03,191 [INFO] Query string: token=5ae91a5b-6624-4bc0-a95f-179aff61f74c&type=qemu
+2025-03-25 11:29:03,191 [INFO] Token: 5ae91a5b-6624-4bc0-a95f-179aff61f74c
+2025-03-25 11:29:03,192 [INFO] Available tokens: ['5ae91a5b-6624-4bc0-a95f-179aff61f74c']
+2025-03-25 11:29:03,192 [WARNING] No host in token data
+2025-03-25 11:29:03,194 [INFO] connection closed
+2025-03-25 11:29:09,333 [INFO] connection open
+2025-03-25 11:29:09,334 [INFO] New connection from ('127.0.0.1', 54548), path: /api/ws/vnc?token=7942f244-3e52-4646-89cd-5fe0d44eb57b&type=qemu
+2025-03-25 11:29:09,334 [INFO] Query string: token=7942f244-3e52-4646-89cd-5fe0d44eb57b&type=qemu
+2025-03-25 11:29:09,334 [INFO] Token: 7942f244-3e52-4646-89cd-5fe0d44eb57b
+2025-03-25 11:29:09,334 [INFO] Available tokens: ['5ae91a5b-6624-4bc0-a95f-179aff61f74c', '7942f244-3e52-4646-89cd-5fe0d44eb57b']
+2025-03-25 11:29:09,334 [WARNING] No host in token data
+2025-03-25 11:29:09,335 [INFO] connection closed
+2025-03-25 11:29:10,319 [INFO] connection open
+2025-03-25 11:29:10,319 [INFO] New connection from ('127.0.0.1', 54562), path: /api/ws/vnc?token=168aa482-099d-41d6-adbc-c8cbb974d087&type=qemu
+2025-03-25 11:29:10,319 [INFO] Query string: token=168aa482-099d-41d6-adbc-c8cbb974d087&type=qemu
+2025-03-25 11:29:10,319 [INFO] Token: 168aa482-099d-41d6-adbc-c8cbb974d087
+2025-03-25 11:29:10,320 [INFO] Available tokens: ['5ae91a5b-6624-4bc0-a95f-179aff61f74c', '7942f244-3e52-4646-89cd-5fe0d44eb57b', '168aa482-099d-41d6-adbc-c8cbb974d087']
+2025-03-25 11:29:10,320 [WARNING] No host in token data
+2025-03-25 11:29:10,321 [INFO] connection closed
+2025-03-25 11:29:11,507 [INFO] connection open
+2025-03-25 11:29:11,507 [INFO] New connection from ('127.0.0.1', 43124), path: /api/ws/vnc?token=639adf88-339b-4889-a976-a852d4b64c9a&type=qemu
+2025-03-25 11:29:11,507 [INFO] Query string: token=639adf88-339b-4889-a976-a852d4b64c9a&type=qemu
+2025-03-25 11:29:11,507 [INFO] Token: 639adf88-339b-4889-a976-a852d4b64c9a
+2025-03-25 11:29:11,508 [INFO] Available tokens: ['5ae91a5b-6624-4bc0-a95f-179aff61f74c', '7942f244-3e52-4646-89cd-5fe0d44eb57b', '168aa482-099d-41d6-adbc-c8cbb974d087', '639adf88-339b-4889-a976-a852d4b64c9a']
+2025-03-25 11:29:11,508 [WARNING] No host in token data
+2025-03-25 11:29:11,510 [INFO] connection closed
+2025-03-25 11:34:20,692 [INFO] Starting WebSocket proxy server on 0.0.0.0:8765
+2025-03-25 11:34:20,710 [INFO] server listening on 0.0.0.0:8765
+2025-03-25 11:34:34,587 [INFO] connection open
+2025-03-25 11:34:34,587 [INFO] New connection from ('127.0.0.1', 54658), path: /api/ws/vnc?token=5eddce21-4280-4ed7-81d0-85865864ea15&type=qemu
+2025-03-25 11:34:34,587 [INFO] Query string: token=5eddce21-4280-4ed7-81d0-85865864ea15&type=qemu
+2025-03-25 11:34:34,587 [INFO] Token: 5eddce21-4280-4ed7-81d0-85865864ea15
+2025-03-25 11:34:34,587 [INFO] Available tokens: ['5ae91a5b-6624-4bc0-a95f-179aff61f74c', '7942f244-3e52-4646-89cd-5fe0d44eb57b', '168aa482-099d-41d6-adbc-c8cbb974d087', '639adf88-339b-4889-a976-a852d4b64c9a', '5eddce21-4280-4ed7-81d0-85865864ea15']
+2025-03-25 11:34:34,587 [INFO] Valid token for 192.168.2.8:5900
+2025-03-25 11:34:34,587 [INFO] Connecting to VNC server at 192.168.2.8:5900
+2025-03-25 11:34:34,589 [INFO] Connected to VNC server successfully
+2025-03-25 11:34:34,589 [INFO] Using VNC ticket: PVEVNC:67E...
+2025-03-25 11:34:34,949 [INFO] connection closed
+2025-03-25 11:41:48,398 [INFO] Starting WebSocket proxy server on 0.0.0.0:8765
+2025-03-25 11:41:48,418 [INFO] server listening on 0.0.0.0:8765
+2025-03-25 11:41:58,354 [INFO] connection open
+2025-03-25 11:41:58,355 [INFO] New connection from ('127.0.0.1', 48172), path: /api/ws/vnc?token=39017569-20e5-42f3-b9ba-c4f0499ef3e9&type=qemu
+2025-03-25 11:41:58,355 [INFO] Query string: token=39017569-20e5-42f3-b9ba-c4f0499ef3e9&type=qemu
+2025-03-25 11:41:58,355 [INFO] Token: 39017569-20e5-42f3-b9ba-c4f0499ef3e9
+2025-03-25 11:41:58,355 [INFO] Available tokens: ['5ae91a5b-6624-4bc0-a95f-179aff61f74c', '7942f244-3e52-4646-89cd-5fe0d44eb57b', '168aa482-099d-41d6-adbc-c8cbb974d087', '639adf88-339b-4889-a976-a852d4b64c9a', '5eddce21-4280-4ed7-81d0-85865864ea15', '39017569-20e5-42f3-b9ba-c4f0499ef3e9']
+2025-03-25 11:41:58,355 [INFO] Valid token for 192.168.2.8:5900
+2025-03-25 11:41:58,355 [INFO] Connecting to VNC server at 192.168.2.8:5900
+2025-03-25 11:41:58,356 [INFO] Connected to VNC server successfully
+2025-03-25 11:41:58,356 [INFO] Using VNC ticket: PVEVNC:67E...
+2025-03-25 11:42:13,400 [INFO] connection closed
+2025-03-25 11:42:33,540 [INFO] connection open
+2025-03-25 11:42:33,540 [INFO] New connection from ('127.0.0.1', 39408), path: /api/ws/vnc?token=9e7dead5-f0e4-48c6-90b3-951650dbb549&type=qemu
+2025-03-25 11:42:33,541 [INFO] Query string: token=9e7dead5-f0e4-48c6-90b3-951650dbb549&type=qemu
+2025-03-25 11:42:33,541 [INFO] Token: 9e7dead5-f0e4-48c6-90b3-951650dbb549
+2025-03-25 11:42:33,541 [INFO] Available tokens: ['5ae91a5b-6624-4bc0-a95f-179aff61f74c', '7942f244-3e52-4646-89cd-5fe0d44eb57b', '168aa482-099d-41d6-adbc-c8cbb974d087', '639adf88-339b-4889-a976-a852d4b64c9a', '5eddce21-4280-4ed7-81d0-85865864ea15', '39017569-20e5-42f3-b9ba-c4f0499ef3e9', '9e7dead5-f0e4-48c6-90b3-951650dbb549']
+2025-03-25 11:42:33,541 [INFO] Valid token for 192.168.2.8:5901
+2025-03-25 11:42:33,541 [INFO] Connecting to VNC server at 192.168.2.8:5901
+2025-03-25 11:42:33,543 [INFO] Connected to VNC server successfully
+2025-03-25 11:42:33,543 [INFO] Using VNC ticket: PVEVNC:67E...
+2025-03-25 11:46:10,366 [INFO] connection closed
+2025-03-25 11:46:21,475 [INFO] connection open
+2025-03-25 11:46:21,475 [INFO] New connection from ('127.0.0.1', 42532), path: /api/ws/vnc?token=5d89b1f4-088e-4ed7-8d0d-fafa0a8ebacd&type=qemu
+2025-03-25 11:46:21,475 [INFO] Query string: token=5d89b1f4-088e-4ed7-8d0d-fafa0a8ebacd&type=qemu
+2025-03-25 11:46:21,475 [INFO] Token: 5d89b1f4-088e-4ed7-8d0d-fafa0a8ebacd
+2025-03-25 11:46:21,475 [INFO] Available tokens: ['5ae91a5b-6624-4bc0-a95f-179aff61f74c', '7942f244-3e52-4646-89cd-5fe0d44eb57b', '168aa482-099d-41d6-adbc-c8cbb974d087', '639adf88-339b-4889-a976-a852d4b64c9a', '5eddce21-4280-4ed7-81d0-85865864ea15', '39017569-20e5-42f3-b9ba-c4f0499ef3e9', '9e7dead5-f0e4-48c6-90b3-951650dbb549', '5d89b1f4-088e-4ed7-8d0d-fafa0a8ebacd']
+2025-03-25 11:46:21,475 [INFO] Valid token for 192.168.2.8:5900
+2025-03-25 11:46:21,476 [INFO] Connecting to VNC server at 192.168.2.8:5900
+2025-03-25 11:46:21,477 [INFO] Connected to VNC server successfully
+2025-03-25 11:46:21,477 [INFO] Using VNC ticket: PVEVNC:67E...
+2025-03-25 11:46:29,723 [INFO] connection closed

@@ -96,11 +96,11 @@
         top: 10px;
         right: 10px;
         z-index: 10;
-        background-color: rgba(0, 0, 0, 0.5);
-        padding: 5px;
+        background-color: rgba(0, 0, 0, 0.8);
+        padding: 10px;
         border-radius: 4px;
         transition: opacity 0.3s;
-        opacity: 0.4;
+        opacity: 0.9;
     }
     
     .console-toolbar:hover {
@@ -108,9 +108,10 @@
     }
     
     .console-toolbar .btn {
-        margin: 0 2px;
-        padding: 3px 8px;
-        font-size: 12px;
+        margin: 0 5px;
+        padding: 5px 10px;
+        font-size: 14px;
+        min-width: 90px;
     }
     
     /* Snapshots Modal */
@@ -228,20 +229,20 @@
 <!-- noVNC Console Container - Notice this now directly follows the info bar -->
 <div class="novnc-container" id="console-container">
     <div class="console-toolbar">
+        <button class="btn btn-sm btn-success" id="connectBtn" title="Connect to Console">
+            Connect
+        </button>
         <button class="btn btn-sm btn-dark" id="ctrlAltDelBtn" title="Send Ctrl+Alt+Del">
-            <i class="fas fa-keyboard"></i> Ctrl+Alt+Del
+            Ctrl+Alt+Del
         </button>
         <button class="btn btn-sm btn-dark" id="fullscreenBtn" title="Fullscreen">
-            <i class="fas fa-expand"></i>
+            Fullscreen
         </button>
         <button class="btn btn-sm btn-dark" id="clipboardBtn" title="Clipboard">
-            <i class="fas fa-clipboard"></i>
-        </button>
-        <button class="btn btn-sm btn-dark" id="keyboardBtn" title="Virtual Keyboard">
-            <i class="fas fa-keyboard"></i>
+            Clipboard
         </button>
         <button class="btn btn-sm btn-dark" id="disconnectBtn" title="Disconnect">
-            <i class="fas fa-times"></i>
+            Disconnect
         </button>
     </div>
     <canvas id="novnc-canvas"></canvas>
@@ -646,25 +647,45 @@
                 const vnc_info = data.data;
                 document.getElementById('statusMessage').textContent = 'Connecting to VNC...';
                 
-                // Connect to the VNC server
-                const url = `wss://${window.location.hostname}:${window.location.port}/api/vm/${node}/${vmid}/vnc?token=${vnc_info.ticket}`;
+                // Connect to the VNC server via our WebSocket proxy
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const url = `${wsProtocol}//${window.location.hostname}:8765/api/ws/vnc?token=${vnc_info.token}&type=${type}`;
                 
                 // Initialize noVNC
                 rfb = new RFB(document.getElementById('novnc-canvas'), url, {
                     credentials: {
+                        // Make sure we're passing the authentication ticket correctly
                         password: vnc_info.ticket
-                    }
+                    },
+                    // VNC-specific settings
+                    shared: true,
+                    reconnect: true,
+                    qualityLevel: 6,
+                    showDotCursor: true,
+                    // Debug logging
+                    logLevel: 'debug'
                 });
                 
                 rfb.addEventListener("connect", () => {
                     document.getElementById('statusMessage').style.display = 'none';
                     console.log("Connected to VNC");
+                    const connectBtn = document.getElementById('connectBtn');
+                    if (connectBtn) {
+                        connectBtn.innerHTML = 'Disconnect';
+                        connectBtn.disabled = false;
+                    }
                 });
                 
                 rfb.addEventListener("disconnect", (e) => {
                     document.getElementById('statusMessage').textContent = 'Disconnected: ' + e.detail.reason;
                     document.getElementById('statusMessage').style.display = 'block';
                     console.log("Disconnected", e.detail.reason);
+                    const connectBtn = document.getElementById('connectBtn');
+                    if (connectBtn) {
+                        connectBtn.innerHTML = 'Connect';
+                        connectBtn.disabled = false;
+                    }
+                    rfb = null; // Clear the RFB object
                 });
                 
                 rfb.addEventListener("credentialsrequired", () => {
@@ -673,20 +694,41 @@
                 });
             } else {
                 document.getElementById('statusMessage').textContent = 'Failed to get VNC proxy: ' + (data.error || 'Unknown error');
+                const connectBtn = document.getElementById('connectBtn');
+                if (connectBtn) {
+                    connectBtn.disabled = false;
+                    connectBtn.innerHTML = 'Connect';
+                }
             }
         })
         .catch(error => {
             document.getElementById('statusMessage').textContent = 'Error connecting to VNC: ' + error;
             console.error("VNC error:", error);
+            const connectBtn = document.getElementById('connectBtn');
+            if (connectBtn) {
+                connectBtn.disabled = false;
+                connectBtn.innerHTML = 'Connect';
+            }
         });
     }
     
-    // Initialize VNC connection if VM is running
-    {% if vm_status.status == 'running' %}
-    document.addEventListener('DOMContentLoaded', function() {
-        // Wait a moment for page to fully load
-        setTimeout(connectToVNC, 500);
+    // Connect button handler
+    document.getElementById('connectBtn')?.addEventListener('click', function() {
+        if (rfb) {
+            rfb.disconnect();
+            document.getElementById('statusMessage').textContent = 'Disconnected by user';
+            document.getElementById('statusMessage').style.display = 'block';
+            this.innerHTML = 'Connect';
+        } else {
+            this.innerHTML = 'Connecting...';
+            this.disabled = true;
+            connectToVNC();
+        }
     });
+    
+    // Initialize VNC connection status
+    {% if vm_status.status == 'running' %}
+    document.getElementById('statusMessage').textContent = 'Click Connect to access the console';
     {% else %}
     document.getElementById('statusMessage').textContent = 'VM is not running. Start the VM to access console.';
     {% endif %}
